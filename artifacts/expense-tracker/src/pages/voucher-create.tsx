@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,8 +11,10 @@ import {
   useListPaymentStatuses,
   useCreatePaymentVoucher,
   useCreateReceiveVoucher,
+  useUploadExpenseDocuments,
   getListExpensesQueryKey,
 } from "@workspace/api-client-react";
+import type { UploadExpenseDocumentsBody } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Upload, X } from "lucide-react";
 import { Link } from "wouter";
 
 const voucherSchema = z.object({
@@ -48,6 +50,8 @@ export default function VoucherCreate({ voucherType }: VoucherCreateProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: projects } = useListProjects({ limit: 200 });
   const { data: vendors } = useListVendors({ limit: 200 });
@@ -57,6 +61,7 @@ export default function VoucherCreate({ voucherType }: VoucherCreateProps) {
 
   const createPayment = useCreatePaymentVoucher();
   const createReceive = useCreateReceiveVoucher();
+  const uploadMutation = useUploadExpenseDocuments();
   const mutation = voucherType === "payment" ? createPayment : createReceive;
 
   const title = voucherType === "payment" ? "New Payment Voucher" : "New Receive Voucher";
@@ -75,6 +80,17 @@ export default function VoucherCreate({ voucherType }: VoucherCreateProps) {
   const qty = Number(form.watch("quantity") || 0);
   const ppu = Number(form.watch("pricePerUnit") || 0);
   const computedAmount = (qty * ppu).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+    setAttachments(prev => [...prev, ...Array.from(files)]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }
 
   const onSubmit = (values: VoucherFormValues) => {
     mutation.mutate(
@@ -96,8 +112,26 @@ export default function VoucherCreate({ voucherType }: VoucherCreateProps) {
       {
         onSuccess: (data) => {
           queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
-          toast({ title: "Voucher created", description: "Voucher has been saved successfully." });
-          setLocation(`/vouchers/${data.data.expenseId}`);
+          const newId = data.data.expenseId;
+          if (attachments.length > 0) {
+            const body: UploadExpenseDocumentsBody = { files: attachments as Blob[] };
+            uploadMutation.mutate(
+              { id: newId, data: body },
+              {
+                onSuccess: () => {
+                  toast({ title: "Voucher created", description: "Voucher and documents saved." });
+                  setLocation(`/vouchers/${newId}`);
+                },
+                onError: () => {
+                  toast({ title: "Voucher created", description: "Voucher saved; document upload failed.", variant: "destructive" });
+                  setLocation(`/vouchers/${newId}`);
+                },
+              }
+            );
+          } else {
+            toast({ title: "Voucher created", description: "Voucher has been saved successfully." });
+            setLocation(`/vouchers/${newId}`);
+          }
         },
         onError: (err) => {
           toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -105,6 +139,8 @@ export default function VoucherCreate({ voucherType }: VoucherCreateProps) {
       }
     );
   };
+
+  const isPending = mutation.isPending || uploadMutation.isPending;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -246,30 +282,27 @@ export default function VoucherCreate({ voucherType }: VoucherCreateProps) {
                 )} />
               </div>
 
-              {/* Computed amount */}
               <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
                 <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Total Amount</span>
                 <span className="font-mono text-2xl font-bold text-primary" data-testid="computed-amount">₹{computedAmount}</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                <FormField control={form.control} name="paymentStatusId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs uppercase tracking-wider font-bold">Payment Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-payment-status"><SelectValue placeholder="Select status" /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {statuses?.data?.map(s => (
-                          <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
+              <FormField control={form.control} name="paymentStatusId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs uppercase tracking-wider font-bold">Payment Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-payment-status"><SelectValue placeholder="Select status" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {statuses?.data?.map(s => (
+                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </CardContent>
           </Card>
 
@@ -299,12 +332,53 @@ export default function VoucherCreate({ voucherType }: VoucherCreateProps) {
             </CardContent>
           </Card>
 
+          <Card className="bg-card border-border shadow-panel">
+            <CardHeader>
+              <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">Attachments</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  {attachments.map((file, i) => (
+                    <div key={i} className="flex items-center justify-between p-2 rounded border border-border bg-muted/20"
+                      data-testid={`attachment-${i}`}>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Upload className="w-4 h-4 text-primary" />
+                        <span className="font-medium truncate max-w-[240px]">{file.name}</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        type="button" onClick={() => removeAttachment(i)}
+                        data-testid={`btn-remove-attachment-${i}`}>
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileChange}
+                  className="text-sm text-muted-foreground file:mr-3 file:px-3 file:py-1 file:rounded file:border file:border-border file:text-xs file:font-bold file:uppercase file:tracking-wide file:bg-muted file:text-foreground"
+                  data-testid="input-file-upload"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Accepted: PDF, JPG, PNG. Files will be uploaded after saving the voucher.</p>
+            </CardContent>
+          </Card>
+
           <div className="flex justify-end gap-3">
             <Link href={backPath}>
               <Button variant="outline" type="button" data-testid="btn-cancel">Cancel</Button>
             </Link>
-            <Button type="submit" disabled={mutation.isPending} className="font-bold uppercase tracking-wide min-w-32" data-testid="btn-submit-voucher">
-              {mutation.isPending ? "Saving..." : "Create Voucher"}
+            <Button type="submit" disabled={isPending} className="font-bold uppercase tracking-wide min-w-32" data-testid="btn-submit-voucher">
+              {isPending ? (uploadMutation.isPending ? "Uploading..." : "Saving...") : "Create Voucher"}
             </Button>
           </div>
         </form>

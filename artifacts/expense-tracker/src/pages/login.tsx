@@ -18,6 +18,17 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+function getPostLoginPath(role: string): string {
+  switch (role) {
+    case "superadmin":
+    case "admin":
+    case "accounts":
+    case "expense_entry":
+    default:
+      return "/dashboard";
+  }
+}
+
 export default function Login() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
@@ -35,7 +46,7 @@ export default function Login() {
       {
         onSuccess: (data) => {
           login(data.token, data.user);
-          setLocation("/dashboard");
+          setLocation(getPostLoginPath(data.user.role));
         },
         onError: (error) => {
           toast({
@@ -68,6 +79,7 @@ export default function Login() {
                       <Input
                         type="email"
                         placeholder="name@parbati.com"
+                        autoComplete="email"
                         className="bg-input border-border focus-visible:ring-primary"
                         data-testid="input-email"
                         {...field}
@@ -88,6 +100,7 @@ export default function Login() {
                       <Input
                         type="password"
                         placeholder="••••••••"
+                        autoComplete="current-password"
                         className="bg-input border-border focus-visible:ring-primary"
                         data-testid="input-password"
                         {...field}

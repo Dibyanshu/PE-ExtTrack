@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { AlertCircle, ArrowLeft, CheckCircle, Lock, History, Upload, FileText, Pencil } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle, Lock, History, Upload, FileText, Pencil, Printer } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function VoucherDetail() {
@@ -128,9 +128,13 @@ export default function VoucherDetail() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" className="gap-2 font-bold uppercase tracking-wide print:hidden"
+            onClick={() => window.print()} data-testid="btn-print">
+            <Printer className="w-4 h-4" /> Print
+          </Button>
           {!expense.finalizedAt && (
             <Link href={`/vouchers/${id}/edit`}>
-              <Button variant="outline" className="gap-2 font-bold uppercase tracking-wide" data-testid="btn-edit">
+              <Button variant="outline" className="gap-2 font-bold uppercase tracking-wide print:hidden" data-testid="btn-edit">
                 <Pencil className="w-4 h-4" /> Edit
               </Button>
             </Link>

@@ -1,0 +1,23 @@
+{
+  "handler": "api/index.js",
+  "runtime": "nodejs24.x",
+  "architecture": "x86_64",
+  "environment": {},
+  "shouldDisableAutomaticFetchInstrumentation": false,
+  "launcherType": "Nodejs",
+  "shouldAddHelpers": true,
+  "shouldAddSourcemapSupport": true,
+  "awsLambdaHandler": "",
+  "filePathMap": {
+    "node_modules/express": "node_modules/express",
+    "node_modules/cors": "node_modules/cors",
+    "node_modules/drizzle-orm": "node_modules/drizzle-orm",
+    "node_modules/pino-http": "node_modules/pino-http",
+    "node_modules/pino": "node_modules/pino",
+    "node_modules/@workspace/db": "node_modules/@workspace/db",
+    "node_modules/bcryptjs": "node_modules/bcryptjs",
+    "node_modules/jsonwebtoken": "node_modules/jsonwebtoken",
+    "node_modules/@workspace/api-zod": "node_modules/@workspace/api-zod",
+    "node_modules/multer": "node_modules/multer"
+  }
+}

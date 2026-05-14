@@ -3,20 +3,34 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Parbati Enterprises Expense Tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: masters
+    description: Master data (particulars, UOM, payment status, projects, vendors)
+  - name: vouchers
+    description: Payment and Receive Vouchers
+  - name: expenses
+    description: Expense records
+  - name: documents
+    description: File attachments
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +38,1483 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: Refresh JWT token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: New token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user info
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/AuthUser"
+                required: [user]
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin+)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserRecord"
+                required: [data]
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user (admin+)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+
+  /users/{id}:
+    put:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /users/{id}/toggle-active:
+    patch:
+      operationId: toggleUserActive
+      tags: [users]
+      summary: Toggle user active status (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isActive:
+                    type: boolean
+                required: [isActive]
+
+  /masters/particulars:
+    get:
+      operationId: listParticulars
+      tags: [masters]
+      summary: List particulars
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Particulars list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterListResponse"
+    post:
+      operationId: createParticular
+      tags: [masters]
+      summary: Create particular (admin+)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+
+  /masters/particulars/{id}:
+    put:
+      operationId: updateParticular
+      tags: [masters]
+      summary: Update particular (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterCreateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+    delete:
+      operationId: deleteParticular
+      tags: [masters]
+      summary: Delete particular (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /masters/uom:
+    get:
+      operationId: listUom
+      tags: [masters]
+      summary: List units of measure
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: UOM list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterListResponse"
+    post:
+      operationId: createUom
+      tags: [masters]
+      summary: Create UOM (admin+)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+
+  /masters/uom/{id}:
+    put:
+      operationId: updateUom
+      tags: [masters]
+      summary: Update UOM (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterCreateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+    delete:
+      operationId: deleteUom
+      tags: [masters]
+      summary: Delete UOM (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /masters/payment-status:
+    get:
+      operationId: listPaymentStatuses
+      tags: [masters]
+      summary: List payment statuses
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Payment status list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterListResponse"
+    post:
+      operationId: createPaymentStatus
+      tags: [masters]
+      summary: Create payment status (admin+)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+
+  /masters/payment-status/{id}:
+    put:
+      operationId: updatePaymentStatus
+      tags: [masters]
+      summary: Update payment status (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterCreateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+    delete:
+      operationId: deletePaymentStatus
+      tags: [masters]
+      summary: Delete payment status (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /masters/projects:
+    get:
+      operationId: listProjects
+      tags: [masters]
+      summary: List projects
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Projects list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterListResponse"
+    post:
+      operationId: createProject
+      tags: [masters]
+      summary: Create project (admin+)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+
+  /masters/projects/{id}:
+    put:
+      operationId: updateProject
+      tags: [masters]
+      summary: Update project (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+    delete:
+      operationId: deleteProject
+      tags: [masters]
+      summary: Delete project (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /masters/vendors:
+    get:
+      operationId: listVendors
+      tags: [masters]
+      summary: List vendors (searchable)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Vendor list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorListResponse"
+    post:
+      operationId: createVendor
+      tags: [masters]
+      summary: Create vendor (admin+)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendorCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+
+  /masters/vendors/{id}:
+    get:
+      operationId: getVendor
+      tags: [masters]
+      summary: Get vendor by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Vendor detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Vendor"
+                required: [data]
+    put:
+      operationId: updateVendor
+      tags: [masters]
+      summary: Update vendor (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendorCreateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /masters/vendors/{id}/toggle-active:
+    patch:
+      operationId: toggleVendorActive
+      tags: [masters]
+      summary: Toggle vendor active status (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isActive:
+                    type: boolean
+                required: [isActive]
+
+  /masters/vendors/{id}/vouchers:
+    get:
+      operationId: getVendorVouchers
+      tags: [masters]
+      summary: Get all vouchers for a vendor (accounts+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [payment, receive]
+        - name: paymentStatus
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Vouchers for vendor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherListResponse"
+
+  /vouchers/payment:
+    post:
+      operationId: createPaymentVoucher
+      tags: [vouchers]
+      summary: Create a payment voucher (expense_entry+)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVoucherRequest"
+      responses:
+        "201":
+          description: Payment voucher created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherDetailResponse"
+
+  /vouchers/receive:
+    post:
+      operationId: createReceiveVoucher
+      tags: [vouchers]
+      summary: Create a receive voucher (expense_entry+)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVoucherRequest"
+      responses:
+        "201":
+          description: Receive voucher created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherDetailResponse"
+
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: List expenses with filters
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: projectId
+          in: query
+          schema:
+            type: integer
+        - name: particularId
+          in: query
+          schema:
+            type: integer
+        - name: paymentStatusId
+          in: query
+          schema:
+            type: integer
+        - name: vendorId
+          in: query
+          schema:
+            type: integer
+        - name: voucherType
+          in: query
+          schema:
+            type: string
+            enum: [payment, receive]
+        - name: voucherNumber
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Expense list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherListResponse"
+
+  /expenses/{id}:
+    get:
+      operationId: getExpense
+      tags: [expenses]
+      summary: Get expense detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherDetailResponse"
+    put:
+      operationId: updateExpense
+      tags: [expenses]
+      summary: Update expense (creates new version) (expense_entry+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExpenseRequest"
+      responses:
+        "200":
+          description: Updated expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherDetailResponse"
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      summary: Delete expense (admin+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /expenses/{id}/history:
+    get:
+      operationId: getExpenseHistory
+      tags: [expenses]
+      summary: Get all versions of an expense (requires can_view_history flag)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Version history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ExpenseVersion"
+                required: [data]
+
+  /expenses/{expenseId}/versions/{versionId}/documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List documents for an expense version
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: expenseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Document"
+                required: [data]
+    post:
+      operationId: uploadDocuments
+      tags: [documents]
+      summary: Upload documents for an expense version (expense_entry+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: expenseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "201":
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UploadedFile"
+                required: [data]
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary (totals by project, status, type)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+
+    IdResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+      required: [id]
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [expense_entry, accounts, admin, superadmin]
+        canViewHistory:
+          type: boolean
+      required: [id, email, name, role, canViewHistory]
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/AuthUser"
+      required: [token, user]
+
+    UserRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [expense_entry, accounts, admin, superadmin]
+        canViewHistory:
+          type: integer
+        isActive:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, email, role, canViewHistory, isActive]
+
+    CreateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [expense_entry, accounts, admin, superadmin]
+        canViewHistory:
+          type: boolean
+      required: [name, email, password, role]
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [expense_entry, accounts, admin, superadmin]
+        canViewHistory:
+          type: boolean
+
+    MasterItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name]
+
+    MasterListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasterItem"
+      required: [data]
+
+    MasterCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    ProjectItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, code, name]
+
+    ProjectCreateRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+      required: [code, name]
+
+    Vendor:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contactPerson:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        isActive:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, isActive]
+
+    VendorListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Vendor"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [data, total, page, limit]
+
+    VendorCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+      required: [name]
+
+    VoucherDetail:
+      type: object
+      properties:
+        expenseId:
+          type: integer
+        voucherType:
+          type: string
+          enum: [payment, receive]
+        projectId:
+          type: integer
+        projectName:
+          type: string
+        vendorId:
+          type: integer
+        vendorName:
+          type: string
+        versionId:
+          type: integer
+        versionNo:
+          type: integer
+        voucherNumber:
+          type: string
+        expenseDate:
+          type: string
+          format: date
+        particularId:
+          type: integer
+        particularName:
+          type: string
+        description:
+          type: string
+          nullable: true
+        transactionDetails:
+          type: string
+          nullable: true
+        uomId:
+          type: integer
+        uomName:
+          type: string
+        quantity:
+          type: string
+        pricePerUnit:
+          type: string
+        amount:
+          type: string
+        invoiceNumber:
+          type: string
+          nullable: true
+        paymentStatusId:
+          type: integer
+        paymentStatusName:
+          type: string
+      required:
+        - expenseId
+        - voucherType
+        - projectId
+        - projectName
+        - vendorId
+        - vendorName
+        - versionId
+        - versionNo
+        - voucherNumber
+        - expenseDate
+        - particularId
+        - particularName
+        - uomId
+        - uomName
+        - quantity
+        - pricePerUnit
+        - amount
+        - paymentStatusId
+        - paymentStatusName
+
+    VoucherDetailResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/VoucherDetail"
+      required: [data]
+
+    VoucherListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/VoucherDetail"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [data, total, page, limit]
+
+    CreateVoucherRequest:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        vendorId:
+          type: integer
+        expenseDate:
+          type: string
+          format: date
+        particularId:
+          type: integer
+        description:
+          type: string
+        transactionDetails:
+          type: string
+        uomId:
+          type: integer
+        quantity:
+          type: number
+        pricePerUnit:
+          type: number
+        invoiceNumber:
+          type: string
+        paymentStatusId:
+          type: integer
+      required:
+        - projectId
+        - vendorId
+        - expenseDate
+        - particularId
+        - uomId
+        - quantity
+        - pricePerUnit
+        - paymentStatusId
+
+    UpdateExpenseRequest:
+      type: object
+      properties:
+        expenseDate:
+          type: string
+          format: date
+        particularId:
+          type: integer
+        description:
+          type: string
+        transactionDetails:
+          type: string
+        uomId:
+          type: integer
+        quantity:
+          type: number
+        pricePerUnit:
+          type: number
+        invoiceNumber:
+          type: string
+        paymentStatusId:
+          type: integer
+
+    ExpenseVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+        versionNo:
+          type: integer
+        voucherNumber:
+          type: string
+        expenseDate:
+          type: string
+          format: date
+        particularName:
+          type: string
+        uomName:
+          type: string
+        quantity:
+          type: string
+        pricePerUnit:
+          type: string
+        amount:
+          type: string
+        invoiceNumber:
+          type: string
+          nullable: true
+        paymentStatusName:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - versionNo
+        - voucherNumber
+        - expenseDate
+        - particularName
+        - uomName
+        - quantity
+        - pricePerUnit
+        - amount
+        - paymentStatusName
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+        expenseVersionId:
+          type: integer
+        voucherNumber:
+          type: string
+        originalName:
+          type: string
+        storedName:
+          type: string
+        mimeType:
+          type: string
+          nullable: true
+        fileSize:
+          type: integer
+        publicUrl:
+          type: string
+          nullable: true
+        fileOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - expenseVersionId
+        - voucherNumber
+        - originalName
+        - storedName
+        - fileSize
+        - fileOrder
+
+    UploadedFile:
+      type: object
+      properties:
+        id:
+          type: integer
+        originalName:
+          type: string
+        publicUrl:
+          type: string
+      required: [id, originalName, publicUrl]
+
+    ProjectSummary:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        projectName:
+          type: string
+        totalAmount:
+          type: string
+        count:
+          type: integer
+      required: [projectId, projectName, totalAmount, count]
+
+    StatusSummary:
+      type: object
+      properties:
+        paymentStatusId:
+          type: integer
+        paymentStatusName:
+          type: string
+        totalAmount:
+          type: string
+        count:
+          type: integer
+      required: [paymentStatusId, paymentStatusName, totalAmount, count]
+
+    TypeSummary:
+      type: object
+      properties:
+        voucherType:
+          type: string
+          enum: [payment, receive]
+        totalAmount:
+          type: string
+        count:
+          type: integer
+      required: [voucherType, totalAmount, count]
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalAmount:
+          type: string
+        totalCount:
+          type: integer
+        byProject:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectSummary"
+        byStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusSummary"
+        byType:
+          type: array
+          items:
+            $ref: "#/components/schemas/TypeSummary"
+        recentVouchers:
+          type: array
+          items:
+            $ref: "#/components/schemas/VoucherDetail"
+      required: [totalAmount, totalCount, byProject, byStatus, byType, recentVouchers]

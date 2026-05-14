@@ -29,6 +29,8 @@ export async function getVoucherDetail(expenseId: number) {
       createdBy: expenses.createdBy,
       approvedBy: expenses.approvedBy,
       approvedAt: expenses.approvedAt,
+      finalizedBy: expenses.finalizedBy,
+      finalizedAt: expenses.finalizedAt,
       createdAt: expenses.createdAt,
       updatedAt: expenses.updatedAt,
       versionId: expenseVersions.id,

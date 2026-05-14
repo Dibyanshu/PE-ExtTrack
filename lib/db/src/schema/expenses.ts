@@ -40,6 +40,10 @@ export const expenses = mysqlTable("expenses", {
     () => users.id,
   ),
   approvedAt: timestamp("approved_at"),
+  finalizedBy: bigint("finalized_by", { mode: "number", unsigned: true }).references(
+    () => users.id,
+  ),
+  finalizedAt: timestamp("finalized_at"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at")
     .notNull()

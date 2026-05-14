@@ -56,6 +56,20 @@ export async function runStartupMigrations(): Promise<void> {
     );
   }
 
+  // expenses: finalized_by
+  if (!(await columnExists("expenses", "finalized_by"))) {
+    await db.execute(
+      sql.raw(`ALTER TABLE expenses ADD COLUMN finalized_by BIGINT UNSIGNED NULL`),
+    );
+  }
+
+  // expenses: finalized_at
+  if (!(await columnExists("expenses", "finalized_at"))) {
+    await db.execute(
+      sql.raw(`ALTER TABLE expenses ADD COLUMN finalized_at TIMESTAMP NULL DEFAULT NULL`),
+    );
+  }
+
   // users: role
   if (!(await columnExists("users", "role"))) {
     await db.execute(

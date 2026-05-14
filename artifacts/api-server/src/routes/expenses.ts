@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { SQL } from "drizzle-orm";
 import {
   db,
+  pool,
   expenses,
   expenseVersions,
   particularsMaster,
@@ -20,24 +21,15 @@ const router = Router();
 
 router.get("/expenses", requireAuth, async (req, res) => {
   const {
-    from,
-    to,
-    projectId,
-    particularId,
-    paymentStatusId,
-    vendorId,
-    voucherType,
-    voucherNumber,
-    page = "1",
-    limit = "20",
+    from, to, projectId, particularId, paymentStatusId,
+    vendorId, voucherType, voucherNumber,
+    page = "1", limit = "20",
   } = req.query as Record<string, string>;
 
   const pageNum = Math.max(1, Number(page));
   const limitNum = Math.min(100, Number(limit));
   const offset = (pageNum - 1) * limitNum;
 
-  // Always exclude soft-deleted expenses
-  // expenseDate is mode:"string" — compare with ISO date strings, not Date objects
   const conditions: SQL<unknown>[] = [isNull(expenses.deletedAt)];
   if (from) conditions.push(gte(expenseVersions.expenseDate, from));
   if (to) conditions.push(lte(expenseVersions.expenseDate, to));
@@ -72,6 +64,7 @@ router.get("/expenses", requireAuth, async (req, res) => {
         versionId: expenseVersions.id,
         versionNo: expenseVersions.versionNo,
         approvedAt: expenses.approvedAt,
+        finalizedAt: expenses.finalizedAt,
       })
       .from(expenses)
       .innerJoin(expenseVersions, eq(expenseVersions.id, expenses.currentVersionId!))
@@ -96,16 +89,19 @@ router.get("/expenses", requireAuth, async (req, res) => {
 
 router.get("/expenses/:id", requireAuth, async (req, res) => {
   const expenseId = Number(req.params.id);
-  const detail = await getVoucherDetail(expenseId);
-  if (!detail) { res.status(404).json({ error: "Expense not found" }); return; }
 
-  // Check soft-deleted
   const [exp] = await db
     .select({ deletedAt: expenses.deletedAt })
     .from(expenses)
     .where(eq(expenses.id, expenseId))
     .limit(1);
-  if (exp?.deletedAt !== null) { res.status(404).json({ error: "Expense not found" }); return; }
+  if (!exp || exp.deletedAt !== null) {
+    res.status(404).json({ error: "Expense not found" });
+    return;
+  }
+
+  const detail = await getVoucherDetail(expenseId);
+  if (!detail) { res.status(404).json({ error: "Expense not found" }); return; }
 
   const docs = await db
     .select()
@@ -127,9 +123,12 @@ router.put("/expenses/:id", requireRole("expense_entry"), async (req, res) => {
     .limit(1);
   if (!existing) { res.status(404).json({ error: "Expense not found" }); return; }
 
-  // Cannot edit an approved expense
   if (existing.approvedAt !== null) {
     res.status(409).json({ error: "Cannot edit an already-approved expense" });
+    return;
+  }
+  if (existing.finalizedAt !== null) {
+    res.status(409).json({ error: "Cannot edit a finalized expense" });
     return;
   }
 
@@ -149,76 +148,65 @@ router.put("/expenses/:id", requireRole("expense_entry"), async (req, res) => {
     .limit(1);
 
   const {
-    expenseDate,
-    particularId,
-    description,
-    transactionDetails,
-    uomId,
-    quantity,
-    pricePerUnit,
-    invoiceNumber,
-    paymentStatusId,
+    expenseDate, particularId, description, transactionDetails,
+    uomId, quantity, pricePerUnit, invoiceNumber, paymentStatusId,
   } = req.body as {
-    expenseDate?: string;
-    particularId?: number;
-    description?: string;
-    transactionDetails?: string;
-    uomId?: number;
-    quantity?: number;
-    pricePerUnit?: number;
-    invoiceNumber?: string;
-    paymentStatusId?: number;
+    expenseDate?: string; particularId?: number; description?: string;
+    transactionDetails?: string; uomId?: number; quantity?: number;
+    pricePerUnit?: number; invoiceNumber?: string; paymentStatusId?: number;
   };
 
   const qty = quantity ?? prevVersion?.quantity;
   const ppu = pricePerUnit ?? prevVersion?.pricePerUnit;
   const amount = (Number(qty) * Number(ppu)).toFixed(2);
 
-  let newVersionId!: number;
+  // Use a dedicated connection to avoid LAST_INSERT_ID contamination
+  const conn = await pool.getConnection();
+  let newVersionId: number;
+  try {
+    await conn.beginTransaction();
+    const [verResult] = await conn.execute(
+      `INSERT INTO expense_versions
+         (expense_id, version_no, voucher_number, expense_date, particular_id,
+          description, transaction_details, uom_id, quantity, price_per_unit,
+          amount, invoice_number, payment_status_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        expenseId, nextVersionNo, prevVersion!.voucherNumber,
+        expenseDate ?? prevVersion!.expenseDate,
+        particularId != null ? Number(particularId) : prevVersion!.particularId,
+        description ?? prevVersion?.description ?? null,
+        transactionDetails ?? prevVersion?.transactionDetails ?? null,
+        uomId != null ? Number(uomId) : prevVersion!.uomId,
+        String(qty), String(ppu), amount,
+        invoiceNumber ?? prevVersion?.invoiceNumber ?? null,
+        paymentStatusId != null ? Number(paymentStatusId) : prevVersion!.paymentStatusId,
+        userId,
+      ],
+    ) as [{ insertId: number }, unknown];
+    newVersionId = verResult.insertId;
 
-  await db.transaction(async (tx) => {
-    // Use raw SQL to avoid $returningId() LAST_INSERT_ID confusion inside transactions
-    await tx.execute(
-      sql`INSERT INTO expense_versions
-            (expense_id, version_no, voucher_number, expense_date, particular_id,
-             description, transaction_details, uom_id, quantity, price_per_unit,
-             amount, invoice_number, payment_status_id, created_by)
-          VALUES
-            (${expenseId}, ${nextVersionNo}, ${prevVersion!.voucherNumber},
-             ${expenseDate ?? prevVersion!.expenseDate},
-             ${particularId != null ? Number(particularId) : prevVersion!.particularId},
-             ${description ?? prevVersion?.description ?? null},
-             ${transactionDetails ?? prevVersion?.transactionDetails ?? null},
-             ${uomId != null ? Number(uomId) : prevVersion!.uomId},
-             ${String(qty)}, ${String(ppu)}, ${amount},
-             ${invoiceNumber ?? prevVersion?.invoiceNumber ?? null},
-             ${paymentStatusId != null ? Number(paymentStatusId) : prevVersion!.paymentStatusId},
-             ${userId})`,
+    await conn.execute(
+      "UPDATE expenses SET current_version_id = ? WHERE id = ?",
+      [newVersionId, expenseId],
     );
-
-    const vidResult = await tx.execute(
-      sql`SELECT LAST_INSERT_ID() AS lid`,
-    ) as unknown as [Array<{ lid: number }>, unknown];
-    newVersionId = Number(vidResult[0][0].lid);
-
-    await tx.execute(
-      sql`UPDATE expenses SET current_version_id = ${newVersionId} WHERE id = ${expenseId}`,
-    );
-  });
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 
   await writeAudit({
-    entityType: "expense",
-    entityId: expenseId,
-    action: "update",
-    oldValue: prevVersion,
-    newValue: req.body,
-    userId,
+    entityType: "expense", entityId: expenseId,
+    action: "update", oldValue: prevVersion, newValue: req.body, userId,
   });
   const detail = await getVoucherDetail(expenseId);
   res.json({ data: detail });
 });
 
-// Soft-delete — admin+ only; sets deleted_at timestamp instead of removing rows
+// Soft-delete — admin+ only
 router.delete("/expenses/:id", requireRole("admin"), async (req, res) => {
   const expenseId = Number(req.params.id);
 
@@ -230,19 +218,79 @@ router.delete("/expenses/:id", requireRole("admin"), async (req, res) => {
   if (!existing) { res.status(404).json({ error: "Expense not found" }); return; }
 
   await writeAudit({
-    entityType: "expense",
-    entityId: expenseId,
-    action: "delete",
-    oldValue: existing,
-    userId: res.locals.user.id,
+    entityType: "expense", entityId: expenseId,
+    action: "delete", oldValue: existing, userId: res.locals.user.id,
   });
+
+  await db.update(expenses).set({ deletedAt: new Date() }).where(eq(expenses.id, expenseId));
+  res.json({ success: true });
+});
+
+// Approve — accounts+ only. Once approved, editing is blocked.
+router.patch("/expenses/:id/approve", requireRole("accounts"), async (req, res) => {
+  const expenseId = Number(req.params.id);
+  const userId = res.locals.user.id;
+
+  const [existing] = await db
+    .select()
+    .from(expenses)
+    .where(eq(expenses.id, expenseId))
+    .limit(1);
+
+  if (!existing || existing.deletedAt !== null) {
+    res.status(404).json({ error: "Expense not found" });
+    return;
+  }
+  if (existing.approvedAt !== null) {
+    res.status(409).json({ error: "Expense is already approved" });
+    return;
+  }
 
   await db
     .update(expenses)
-    .set({ deletedAt: new Date() })
+    .set({ approvedBy: userId, approvedAt: new Date() })
     .where(eq(expenses.id, expenseId));
 
-  res.json({ success: true });
+  await writeAudit({ entityType: "expense", entityId: expenseId, action: "approve", userId });
+
+  const detail = await getVoucherDetail(expenseId);
+  res.json({ data: detail });
+});
+
+// Finalize — accounts+ only. Locks the expense permanently after approval.
+// A finalized expense cannot be edited or re-finalized.
+router.patch("/expenses/:id/finalize", requireRole("accounts"), async (req, res) => {
+  const expenseId = Number(req.params.id);
+  const userId = res.locals.user.id;
+
+  const [existing] = await db
+    .select()
+    .from(expenses)
+    .where(eq(expenses.id, expenseId))
+    .limit(1);
+
+  if (!existing || existing.deletedAt !== null) {
+    res.status(404).json({ error: "Expense not found" });
+    return;
+  }
+  if (existing.approvedAt === null) {
+    res.status(409).json({ error: "Expense must be approved before it can be finalized" });
+    return;
+  }
+  if (existing.finalizedAt !== null) {
+    res.status(409).json({ error: "Expense is already finalized" });
+    return;
+  }
+
+  await db
+    .update(expenses)
+    .set({ finalizedAt: new Date(), finalizedBy: userId })
+    .where(eq(expenses.id, expenseId));
+
+  await writeAudit({ entityType: "expense", entityId: expenseId, action: "finalize", userId });
+
+  const detail = await getVoucherDetail(expenseId);
+  res.json({ data: detail });
 });
 
 router.get("/expenses/:id/history", requireAuth, async (req, res) => {

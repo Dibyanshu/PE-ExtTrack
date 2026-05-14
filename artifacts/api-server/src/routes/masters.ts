@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { SQL } from "drizzle-orm";
 import {
   db,
   particularsMaster,
@@ -6,7 +7,7 @@ import {
   paymentStatusMaster,
   projectMaster,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, like, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { writeAudit } from "../lib/audit";
 
@@ -14,9 +15,17 @@ const router = Router();
 
 // ─── Particulars ──────────────────────────────────────────────────────────────
 
-router.get("/masters/particulars", requireAuth, async (_req, res) => {
-  const rows = await db.select().from(particularsMaster).orderBy(particularsMaster.name);
-  res.json({ data: rows });
+router.get("/masters/particulars", requireAuth, async (req, res) => {
+  const { search, page = "1", limit = "50" } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, Number(page));
+  const limitNum = Math.min(200, Number(limit));
+  const offset = (pageNum - 1) * limitNum;
+  const where: SQL<unknown> | undefined = search ? like(particularsMaster.name, `%${search}%`) : undefined;
+  const [rows, [{ cnt }]] = await Promise.all([
+    db.select().from(particularsMaster).where(where).orderBy(particularsMaster.name).limit(limitNum).offset(offset),
+    db.select({ cnt: sql<number>`count(*)` }).from(particularsMaster).where(where),
+  ]);
+  res.json({ data: rows, total: cnt, page: pageNum, limit: limitNum });
 });
 
 router.post("/masters/particulars", requireRole("admin"), async (req, res) => {
@@ -49,9 +58,17 @@ router.delete("/masters/particulars/:id", requireRole("admin"), async (req, res)
 
 // ─── UOM ──────────────────────────────────────────────────────────────────────
 
-router.get("/masters/uom", requireAuth, async (_req, res) => {
-  const rows = await db.select().from(uomMaster).orderBy(uomMaster.name);
-  res.json({ data: rows });
+router.get("/masters/uom", requireAuth, async (req, res) => {
+  const { search, page = "1", limit = "50" } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, Number(page));
+  const limitNum = Math.min(200, Number(limit));
+  const offset = (pageNum - 1) * limitNum;
+  const where: SQL<unknown> | undefined = search ? like(uomMaster.name, `%${search}%`) : undefined;
+  const [rows, [{ cnt }]] = await Promise.all([
+    db.select().from(uomMaster).where(where).orderBy(uomMaster.name).limit(limitNum).offset(offset),
+    db.select({ cnt: sql<number>`count(*)` }).from(uomMaster).where(where),
+  ]);
+  res.json({ data: rows, total: cnt, page: pageNum, limit: limitNum });
 });
 
 router.post("/masters/uom", requireRole("admin"), async (req, res) => {
@@ -84,9 +101,17 @@ router.delete("/masters/uom/:id", requireRole("admin"), async (req, res) => {
 
 // ─── Payment Status ───────────────────────────────────────────────────────────
 
-router.get("/masters/payment-status", requireAuth, async (_req, res) => {
-  const rows = await db.select().from(paymentStatusMaster).orderBy(paymentStatusMaster.name);
-  res.json({ data: rows });
+router.get("/masters/payment-status", requireAuth, async (req, res) => {
+  const { search, page = "1", limit = "50" } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, Number(page));
+  const limitNum = Math.min(200, Number(limit));
+  const offset = (pageNum - 1) * limitNum;
+  const where: SQL<unknown> | undefined = search ? like(paymentStatusMaster.name, `%${search}%`) : undefined;
+  const [rows, [{ cnt }]] = await Promise.all([
+    db.select().from(paymentStatusMaster).where(where).orderBy(paymentStatusMaster.name).limit(limitNum).offset(offset),
+    db.select({ cnt: sql<number>`count(*)` }).from(paymentStatusMaster).where(where),
+  ]);
+  res.json({ data: rows, total: cnt, page: pageNum, limit: limitNum });
 });
 
 router.post("/masters/payment-status", requireRole("admin"), async (req, res) => {
@@ -119,9 +144,17 @@ router.delete("/masters/payment-status/:id", requireRole("admin"), async (req, r
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
-router.get("/masters/projects", requireAuth, async (_req, res) => {
-  const rows = await db.select().from(projectMaster).orderBy(projectMaster.name);
-  res.json({ data: rows });
+router.get("/masters/projects", requireAuth, async (req, res) => {
+  const { search, page = "1", limit = "50" } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, Number(page));
+  const limitNum = Math.min(200, Number(limit));
+  const offset = (pageNum - 1) * limitNum;
+  const where: SQL<unknown> | undefined = search ? like(projectMaster.name, `%${search}%`) : undefined;
+  const [rows, [{ cnt }]] = await Promise.all([
+    db.select().from(projectMaster).where(where).orderBy(projectMaster.name).limit(limitNum).offset(offset),
+    db.select({ cnt: sql<number>`count(*)` }).from(projectMaster).where(where),
+  ]);
+  res.json({ data: rows, total: cnt, page: pageNum, limit: limitNum });
 });
 
 router.post("/masters/projects", requireRole("admin"), async (req, res) => {

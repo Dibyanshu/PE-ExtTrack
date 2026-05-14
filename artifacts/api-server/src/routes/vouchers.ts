@@ -93,15 +93,12 @@ async function createVoucher(
   } = body;
 
   const amount = (Number(quantity) * Number(pricePerUnit)).toFixed(2);
-  // Generate voucher number on its own dedicated connection before main transaction
   const voucherNumber = await nextVoucherNumber(voucherType);
 
-  // Use a dedicated connection for the insert so LAST_INSERT_ID() is never shared
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    // 1. Insert expense
     const [expResult] = await conn.execute(
       `INSERT INTO expenses (project_id, vendor_id, voucher_type, created_by)
        VALUES (?, ?, ?, ?)`,
@@ -109,7 +106,6 @@ async function createVoucher(
     ) as [{ insertId: number }, unknown];
     const expenseId = expResult.insertId;
 
-    // 2. Insert expense_version
     const [verResult] = await conn.execute(
       `INSERT INTO expense_versions
          (expense_id, version_no, voucher_number, expense_date, particular_id,
@@ -129,7 +125,6 @@ async function createVoucher(
     ) as [{ insertId: number }, unknown];
     const versionId = verResult.insertId;
 
-    // 3. Point expense at its current version
     await conn.execute(
       "UPDATE expenses SET current_version_id = ? WHERE id = ?",
       [versionId, expenseId],
@@ -180,36 +175,6 @@ router.post("/vouchers/receive", requireRole("expense_entry"), async (req, res) 
   });
   const detail = await getVoucherDetail(result.expenseId);
   res.status(201).json({ data: detail });
-});
-
-router.patch("/expenses/:id/approve", requireRole("accounts"), async (req, res) => {
-  const expenseId = Number(req.params.id);
-  const userId = res.locals.user.id;
-
-  const [existing] = await db
-    .select()
-    .from(expenses)
-    .where(eq(expenses.id, expenseId))
-    .limit(1);
-
-  if (!existing || existing.deletedAt !== null) {
-    res.status(404).json({ error: "Expense not found" });
-    return;
-  }
-  if (existing.approvedAt !== null) {
-    res.status(409).json({ error: "Expense is already approved" });
-    return;
-  }
-
-  await db
-    .update(expenses)
-    .set({ approvedBy: userId, approvedAt: new Date() })
-    .where(eq(expenses.id, expenseId));
-
-  await writeAudit({ entityType: "expense", entityId: expenseId, action: "approve", userId });
-
-  const detail = await getVoucherDetail(expenseId);
-  res.json({ data: detail });
 });
 
 export default router;

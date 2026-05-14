@@ -112,6 +112,9 @@ export interface MasterItem {
 
 export interface MasterListResponse {
   data: MasterItem[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface MasterCreateRequest {
@@ -123,6 +126,13 @@ export interface ProjectItem {
   code: string;
   name: string;
   createdAt?: string;
+}
+
+export interface ProjectListResponse {
+  data: ProjectItem[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ProjectCreateRequest {
@@ -172,6 +182,13 @@ export interface VoucherDetail {
   projectName: string;
   vendorId: number;
   vendorName: string;
+  createdBy: number;
+  approvedBy?: number | null;
+  approvedAt?: string | null;
+  finalizedBy?: number | null;
+  finalizedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
   versionId: number;
   versionNo: number;
   voucherNumber: string;
@@ -192,6 +209,63 @@ export interface VoucherDetail {
 
 export interface VoucherDetailResponse {
   data: VoucherDetail;
+}
+
+export interface Document {
+  id: number;
+  expenseVersionId: number;
+  voucherNumber: string;
+  originalName: string;
+  storedName: string;
+  mimeType?: string | null;
+  fileSize: number;
+  publicUrl?: string | null;
+  fileOrder: number;
+  createdAt?: string;
+}
+
+export type ExpenseDetailResponseData = VoucherDetail & {
+  documents: Document[];
+};
+
+export interface ExpenseDetailResponse {
+  data: ExpenseDetailResponseData;
+}
+
+export type ExpenseListItemVoucherType =
+  (typeof ExpenseListItemVoucherType)[keyof typeof ExpenseListItemVoucherType];
+
+export const ExpenseListItemVoucherType = {
+  payment: "payment",
+  receive: "receive",
+} as const;
+
+export interface ExpenseListItem {
+  expenseId: number;
+  voucherType: ExpenseListItemVoucherType;
+  projectName: string;
+  vendorName: string;
+  voucherNumber: string;
+  expenseDate: string;
+  particularName: string;
+  uomName: string;
+  quantity: string;
+  pricePerUnit: string;
+  amount: string;
+  invoiceNumber?: string | null;
+  paymentStatusName: string;
+  paymentStatusId: number;
+  versionId: number;
+  versionNo: number;
+  approvedAt?: string | null;
+  finalizedAt?: string | null;
+}
+
+export interface ExpenseListResponse {
+  data: ExpenseListItem[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface VoucherListResponse {
@@ -240,19 +314,6 @@ export interface ExpenseVersion {
   invoiceNumber?: string | null;
   paymentStatusName: string;
   description?: string | null;
-  createdAt?: string;
-}
-
-export interface Document {
-  id: number;
-  expenseVersionId: number;
-  voucherNumber: string;
-  originalName: string;
-  storedName: string;
-  mimeType?: string | null;
-  fileSize: number;
-  publicUrl?: string | null;
-  fileOrder: number;
   createdAt?: string;
 }
 
@@ -309,6 +370,30 @@ export type ListUsers200 = {
 
 export type ToggleUserActive200 = {
   isActive: boolean;
+};
+
+export type ListParticularsParams = {
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type ListUomParams = {
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type ListPaymentStatusesParams = {
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type ListProjectsParams = {
+  search?: string;
+  page?: number;
+  limit?: number;
 };
 
 export type ListVendorsParams = {

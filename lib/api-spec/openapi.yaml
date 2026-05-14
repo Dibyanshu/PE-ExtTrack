@@ -194,9 +194,24 @@ paths:
     get:
       operationId: listParticulars
       tags: [masters]
-      summary: List particulars
+      summary: List particulars (paginated)
       security:
         - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
       responses:
         "200":
           description: Particulars list
@@ -274,9 +289,24 @@ paths:
     get:
       operationId: listUom
       tags: [masters]
-      summary: List units of measure
+      summary: List units of measure (paginated)
       security:
         - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
       responses:
         "200":
           description: UOM list
@@ -354,9 +384,24 @@ paths:
     get:
       operationId: listPaymentStatuses
       tags: [masters]
-      summary: List payment statuses
+      summary: List payment statuses (paginated)
       security:
         - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
       responses:
         "200":
           description: Payment status list
@@ -434,16 +479,31 @@ paths:
     get:
       operationId: listProjects
       tags: [masters]
-      summary: List projects
+      summary: List projects (paginated)
       security:
         - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
       responses:
         "200":
           description: Projects list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MasterListResponse"
+                $ref: "#/components/schemas/ProjectListResponse"
     post:
       operationId: createProject
       tags: [masters]
@@ -514,7 +574,7 @@ paths:
     get:
       operationId: listVendors
       tags: [masters]
-      summary: List vendors (searchable)
+      summary: List vendors (searchable, paginated)
       security:
         - bearerAuth: []
       parameters:
@@ -730,7 +790,7 @@ paths:
     get:
       operationId: listExpenses
       tags: [expenses]
-      summary: List expenses with filters
+      summary: List expenses with filters (paginated)
       security:
         - bearerAuth: []
       parameters:
@@ -785,13 +845,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VoucherListResponse"
+                $ref: "#/components/schemas/ExpenseListResponse"
 
   /expenses/{id}:
     get:
       operationId: getExpense
       tags: [expenses]
-      summary: Get expense detail
+      summary: Get expense detail (includes documents)
       security:
         - bearerAuth: []
       parameters:
@@ -802,11 +862,17 @@ paths:
             type: integer
       responses:
         "200":
-          description: Expense detail
+          description: Expense detail with documents
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VoucherDetailResponse"
+                $ref: "#/components/schemas/ExpenseDetailResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     put:
       operationId: updateExpense
       tags: [expenses]
@@ -832,10 +898,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VoucherDetailResponse"
+        "409":
+          description: Expense is approved or finalized — cannot edit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteExpense
       tags: [expenses]
-      summary: Delete expense (admin+)
+      summary: Soft-delete expense (admin+)
       security:
         - bearerAuth: []
       parameters:
@@ -851,6 +923,72 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
+
+  /expenses/{id}/approve:
+    patch:
+      operationId: approveExpense
+      tags: [expenses]
+      summary: Approve an expense (accounts+). Blocks further edits.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approved expense detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherDetailResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /expenses/{id}/finalize:
+    patch:
+      operationId: finalizeExpense
+      tags: [expenses]
+      summary: Finalize an expense (accounts+). Requires prior approval. Permanently locks the record.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Finalized expense detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherDetailResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Not yet approved, or already finalized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /expenses/{id}/history:
     get:
@@ -1120,7 +1258,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MasterItem"
-      required: [data]
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [data, total, page, limit]
 
     MasterCreateRequest:
       type: object
@@ -1142,6 +1286,21 @@ components:
           type: string
           format: date-time
       required: [id, code, name]
+
+    ProjectListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [data, total, page, limit]
 
     ProjectCreateRequest:
       type: object
@@ -1227,6 +1386,28 @@ components:
           type: integer
         vendorName:
           type: string
+        createdBy:
+          type: integer
+        approvedBy:
+          type: integer
+          nullable: true
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finalizedBy:
+          type: integer
+          nullable: true
+        finalizedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
         versionId:
           type: integer
         versionNo:
@@ -1270,6 +1451,9 @@ components:
         - projectName
         - vendorId
         - vendorName
+        - createdBy
+        - createdAt
+        - updatedAt
         - versionId
         - versionNo
         - voucherNumber
@@ -1290,6 +1474,99 @@ components:
         data:
           $ref: "#/components/schemas/VoucherDetail"
       required: [data]
+
+    ExpenseDetailResponse:
+      type: object
+      properties:
+        data:
+          allOf:
+            - $ref: "#/components/schemas/VoucherDetail"
+            - type: object
+              properties:
+                documents:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Document"
+              required: [documents]
+      required: [data]
+
+    ExpenseListItem:
+      type: object
+      properties:
+        expenseId:
+          type: integer
+        voucherType:
+          type: string
+          enum: [payment, receive]
+        projectName:
+          type: string
+        vendorName:
+          type: string
+        voucherNumber:
+          type: string
+        expenseDate:
+          type: string
+          format: date
+        particularName:
+          type: string
+        uomName:
+          type: string
+        quantity:
+          type: string
+        pricePerUnit:
+          type: string
+        amount:
+          type: string
+        invoiceNumber:
+          type: string
+          nullable: true
+        paymentStatusName:
+          type: string
+        paymentStatusId:
+          type: integer
+        versionId:
+          type: integer
+        versionNo:
+          type: integer
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finalizedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - expenseId
+        - voucherType
+        - projectName
+        - vendorName
+        - voucherNumber
+        - expenseDate
+        - particularName
+        - uomName
+        - quantity
+        - pricePerUnit
+        - amount
+        - paymentStatusName
+        - paymentStatusId
+        - versionId
+        - versionNo
+
+    ExpenseListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpenseListItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [data, total, page, limit]
 
     VoucherListResponse:
       type: object

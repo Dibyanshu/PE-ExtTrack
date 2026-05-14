@@ -21,6 +21,8 @@ import type {
   CreateVoucherRequest,
   DashboardSummary,
   ErrorResponse,
+  ExpenseDetailResponse,
+  ExpenseListResponse,
   GetDashboardSummaryParams,
   GetExpenseHistory200,
   GetMe200,
@@ -30,6 +32,10 @@ import type {
   IdResponse,
   ListDocuments200,
   ListExpensesParams,
+  ListParticularsParams,
+  ListPaymentStatusesParams,
+  ListProjectsParams,
+  ListUomParams,
   ListUsers200,
   ListVendorsParams,
   LoginRequest,
@@ -37,6 +43,7 @@ import type {
   MasterCreateRequest,
   MasterListResponse,
   ProjectCreateRequest,
+  ProjectListResponse,
   SuccessResponse,
   ToggleUserActive200,
   ToggleVendorActive200,
@@ -689,43 +696,59 @@ export const useToggleUserActive = <
 };
 
 /**
- * @summary List particulars
+ * @summary List particulars (paginated)
  */
-export const getListParticularsUrl = () => {
-  return `/api/masters/particulars`;
+export const getListParticularsUrl = (params?: ListParticularsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/masters/particulars?${stringifiedParams}`
+    : `/api/masters/particulars`;
 };
 
 export const listParticulars = async (
+  params?: ListParticularsParams,
   options?: RequestInit,
 ): Promise<MasterListResponse> => {
-  return customFetch<MasterListResponse>(getListParticularsUrl(), {
+  return customFetch<MasterListResponse>(getListParticularsUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListParticularsQueryKey = () => {
-  return [`/api/masters/particulars`] as const;
+export const getListParticularsQueryKey = (params?: ListParticularsParams) => {
+  return [`/api/masters/particulars`, ...(params ? [params] : [])] as const;
 };
 
 export const getListParticularsQueryOptions = <
   TData = Awaited<ReturnType<typeof listParticulars>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listParticulars>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListParticularsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listParticulars>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListParticularsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListParticularsQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listParticulars>>> = ({
     signal,
-  }) => listParticulars({ signal, ...requestOptions });
+  }) => listParticulars(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listParticulars>>,
@@ -740,21 +763,24 @@ export type ListParticularsQueryResult = NonNullable<
 export type ListParticularsQueryError = ErrorType<unknown>;
 
 /**
- * @summary List particulars
+ * @summary List particulars (paginated)
  */
 
 export function useListParticulars<
   TData = Awaited<ReturnType<typeof listParticulars>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listParticulars>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListParticularsQueryOptions(options);
+>(
+  params?: ListParticularsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listParticulars>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListParticularsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1021,39 +1047,55 @@ export const useDeleteParticular = <
 };
 
 /**
- * @summary List units of measure
+ * @summary List units of measure (paginated)
  */
-export const getListUomUrl = () => {
-  return `/api/masters/uom`;
+export const getListUomUrl = (params?: ListUomParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/masters/uom?${stringifiedParams}`
+    : `/api/masters/uom`;
 };
 
 export const listUom = async (
+  params?: ListUomParams,
   options?: RequestInit,
 ): Promise<MasterListResponse> => {
-  return customFetch<MasterListResponse>(getListUomUrl(), {
+  return customFetch<MasterListResponse>(getListUomUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListUomQueryKey = () => {
-  return [`/api/masters/uom`] as const;
+export const getListUomQueryKey = (params?: ListUomParams) => {
+  return [`/api/masters/uom`, ...(params ? [params] : [])] as const;
 };
 
 export const getListUomQueryOptions = <
   TData = Awaited<ReturnType<typeof listUom>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listUom>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListUomParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listUom>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListUomQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListUomQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listUom>>> = ({
     signal,
-  }) => listUom({ signal, ...requestOptions });
+  }) => listUom(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listUom>>,
@@ -1068,17 +1110,20 @@ export type ListUomQueryResult = NonNullable<
 export type ListUomQueryError = ErrorType<unknown>;
 
 /**
- * @summary List units of measure
+ * @summary List units of measure (paginated)
  */
 
 export function useListUom<
   TData = Awaited<ReturnType<typeof listUom>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listUom>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListUomQueryOptions(options);
+>(
+  params?: ListUomParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listUom>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListUomQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1345,43 +1390,65 @@ export const useDeleteUom = <
 };
 
 /**
- * @summary List payment statuses
+ * @summary List payment statuses (paginated)
  */
-export const getListPaymentStatusesUrl = () => {
-  return `/api/masters/payment-status`;
+export const getListPaymentStatusesUrl = (
+  params?: ListPaymentStatusesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/masters/payment-status?${stringifiedParams}`
+    : `/api/masters/payment-status`;
 };
 
 export const listPaymentStatuses = async (
+  params?: ListPaymentStatusesParams,
   options?: RequestInit,
 ): Promise<MasterListResponse> => {
-  return customFetch<MasterListResponse>(getListPaymentStatusesUrl(), {
+  return customFetch<MasterListResponse>(getListPaymentStatusesUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListPaymentStatusesQueryKey = () => {
-  return [`/api/masters/payment-status`] as const;
+export const getListPaymentStatusesQueryKey = (
+  params?: ListPaymentStatusesParams,
+) => {
+  return [`/api/masters/payment-status`, ...(params ? [params] : [])] as const;
 };
 
 export const getListPaymentStatusesQueryOptions = <
   TData = Awaited<ReturnType<typeof listPaymentStatuses>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listPaymentStatuses>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListPaymentStatusesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPaymentStatuses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListPaymentStatusesQueryKey();
+  const queryKey =
+    queryOptions?.queryKey ?? getListPaymentStatusesQueryKey(params);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof listPaymentStatuses>>
-  > = ({ signal }) => listPaymentStatuses({ signal, ...requestOptions });
+  > = ({ signal }) =>
+    listPaymentStatuses(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listPaymentStatuses>>,
@@ -1396,21 +1463,24 @@ export type ListPaymentStatusesQueryResult = NonNullable<
 export type ListPaymentStatusesQueryError = ErrorType<unknown>;
 
 /**
- * @summary List payment statuses
+ * @summary List payment statuses (paginated)
  */
 
 export function useListPaymentStatuses<
   TData = Awaited<ReturnType<typeof listPaymentStatuses>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listPaymentStatuses>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListPaymentStatusesQueryOptions(options);
+>(
+  params?: ListPaymentStatusesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPaymentStatuses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPaymentStatusesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1677,43 +1747,59 @@ export const useDeletePaymentStatus = <
 };
 
 /**
- * @summary List projects
+ * @summary List projects (paginated)
  */
-export const getListProjectsUrl = () => {
-  return `/api/masters/projects`;
+export const getListProjectsUrl = (params?: ListProjectsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/masters/projects?${stringifiedParams}`
+    : `/api/masters/projects`;
 };
 
 export const listProjects = async (
+  params?: ListProjectsParams,
   options?: RequestInit,
-): Promise<MasterListResponse> => {
-  return customFetch<MasterListResponse>(getListProjectsUrl(), {
+): Promise<ProjectListResponse> => {
+  return customFetch<ProjectListResponse>(getListProjectsUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListProjectsQueryKey = () => {
-  return [`/api/masters/projects`] as const;
+export const getListProjectsQueryKey = (params?: ListProjectsParams) => {
+  return [`/api/masters/projects`, ...(params ? [params] : [])] as const;
 };
 
 export const getListProjectsQueryOptions = <
   TData = Awaited<ReturnType<typeof listProjects>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listProjects>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListProjectsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProjects>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListProjectsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListProjectsQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listProjects>>> = ({
     signal,
-  }) => listProjects({ signal, ...requestOptions });
+  }) => listProjects(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listProjects>>,
@@ -1728,21 +1814,24 @@ export type ListProjectsQueryResult = NonNullable<
 export type ListProjectsQueryError = ErrorType<unknown>;
 
 /**
- * @summary List projects
+ * @summary List projects (paginated)
  */
 
 export function useListProjects<
   TData = Awaited<ReturnType<typeof listProjects>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listProjects>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListProjectsQueryOptions(options);
+>(
+  params?: ListProjectsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProjects>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -2009,7 +2098,7 @@ export const useDeleteProject = <
 };
 
 /**
- * @summary List vendors (searchable)
+ * @summary List vendors (searchable, paginated)
  */
 export const getListVendorsUrl = (params?: ListVendorsParams) => {
   const normalizedParams = new URLSearchParams();
@@ -2076,7 +2165,7 @@ export type ListVendorsQueryResult = NonNullable<
 export type ListVendorsQueryError = ErrorType<unknown>;
 
 /**
- * @summary List vendors (searchable)
+ * @summary List vendors (searchable, paginated)
  */
 
 export function useListVendors<
@@ -2730,7 +2819,7 @@ export const useCreateReceiveVoucher = <
 };
 
 /**
- * @summary List expenses with filters
+ * @summary List expenses with filters (paginated)
  */
 export const getListExpensesUrl = (params?: ListExpensesParams) => {
   const normalizedParams = new URLSearchParams();
@@ -2751,8 +2840,8 @@ export const getListExpensesUrl = (params?: ListExpensesParams) => {
 export const listExpenses = async (
   params?: ListExpensesParams,
   options?: RequestInit,
-): Promise<VoucherListResponse> => {
-  return customFetch<VoucherListResponse>(getListExpensesUrl(params), {
+): Promise<ExpenseListResponse> => {
+  return customFetch<ExpenseListResponse>(getListExpensesUrl(params), {
     ...options,
     method: "GET",
   });
@@ -2797,7 +2886,7 @@ export type ListExpensesQueryResult = NonNullable<
 export type ListExpensesQueryError = ErrorType<unknown>;
 
 /**
- * @summary List expenses with filters
+ * @summary List expenses with filters (paginated)
  */
 
 export function useListExpenses<
@@ -2824,7 +2913,7 @@ export function useListExpenses<
 }
 
 /**
- * @summary Get expense detail
+ * @summary Get expense detail (includes documents)
  */
 export const getGetExpenseUrl = (id: number) => {
   return `/api/expenses/${id}`;
@@ -2833,8 +2922,8 @@ export const getGetExpenseUrl = (id: number) => {
 export const getExpense = async (
   id: number,
   options?: RequestInit,
-): Promise<VoucherDetailResponse> => {
-  return customFetch<VoucherDetailResponse>(getGetExpenseUrl(id), {
+): Promise<ExpenseDetailResponse> => {
+  return customFetch<ExpenseDetailResponse>(getGetExpenseUrl(id), {
     ...options,
     method: "GET",
   });
@@ -2846,7 +2935,7 @@ export const getGetExpenseQueryKey = (id: number) => {
 
 export const getGetExpenseQueryOptions = <
   TData = Awaited<ReturnType<typeof getExpense>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
 >(
   id: number,
   options?: {
@@ -2881,15 +2970,15 @@ export const getGetExpenseQueryOptions = <
 export type GetExpenseQueryResult = NonNullable<
   Awaited<ReturnType<typeof getExpense>>
 >;
-export type GetExpenseQueryError = ErrorType<unknown>;
+export type GetExpenseQueryError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Get expense detail
+ * @summary Get expense detail (includes documents)
  */
 
 export function useGetExpense<
   TData = Awaited<ReturnType<typeof getExpense>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
 >(
   id: number,
   options?: {
@@ -2931,7 +3020,7 @@ export const updateExpense = async (
 };
 
 export const getUpdateExpenseMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2972,13 +3061,13 @@ export type UpdateExpenseMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateExpense>>
 >;
 export type UpdateExpenseMutationBody = BodyType<UpdateExpenseRequest>;
-export type UpdateExpenseMutationError = ErrorType<unknown>;
+export type UpdateExpenseMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Update expense (creates new version) (expense_entry+)
  */
 export const useUpdateExpense = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2998,7 +3087,7 @@ export const useUpdateExpense = <
 };
 
 /**
- * @summary Delete expense (admin+)
+ * @summary Soft-delete expense (admin+)
  */
 export const getDeleteExpenseUrl = (id: number) => {
   return `/api/expenses/${id}`;
@@ -3059,7 +3148,7 @@ export type DeleteExpenseMutationResult = NonNullable<
 export type DeleteExpenseMutationError = ErrorType<unknown>;
 
 /**
- * @summary Delete expense (admin+)
+ * @summary Soft-delete expense (admin+)
  */
 export const useDeleteExpense = <
   TError = ErrorType<unknown>,
@@ -3079,6 +3168,174 @@ export const useDeleteExpense = <
   TContext
 > => {
   return useMutation(getDeleteExpenseMutationOptions(options));
+};
+
+/**
+ * @summary Approve an expense (accounts+). Blocks further edits.
+ */
+export const getApproveExpenseUrl = (id: number) => {
+  return `/api/expenses/${id}/approve`;
+};
+
+export const approveExpense = async (
+  id: number,
+  options?: RequestInit,
+): Promise<VoucherDetailResponse> => {
+  return customFetch<VoucherDetailResponse>(getApproveExpenseUrl(id), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getApproveExpenseMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveExpense>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveExpense>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["approveExpense"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveExpense>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return approveExpense(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveExpenseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveExpense>>
+>;
+
+export type ApproveExpenseMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Approve an expense (accounts+). Blocks further edits.
+ */
+export const useApproveExpense = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveExpense>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveExpense>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getApproveExpenseMutationOptions(options));
+};
+
+/**
+ * @summary Finalize an expense (accounts+). Requires prior approval. Permanently locks the record.
+ */
+export const getFinalizeExpenseUrl = (id: number) => {
+  return `/api/expenses/${id}/finalize`;
+};
+
+export const finalizeExpense = async (
+  id: number,
+  options?: RequestInit,
+): Promise<VoucherDetailResponse> => {
+  return customFetch<VoucherDetailResponse>(getFinalizeExpenseUrl(id), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getFinalizeExpenseMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof finalizeExpense>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof finalizeExpense>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["finalizeExpense"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof finalizeExpense>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return finalizeExpense(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FinalizeExpenseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof finalizeExpense>>
+>;
+
+export type FinalizeExpenseMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Finalize an expense (accounts+). Requires prior approval. Permanently locks the record.
+ */
+export const useFinalizeExpense = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof finalizeExpense>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof finalizeExpense>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getFinalizeExpenseMutationOptions(options));
 };
 
 /**

@@ -121,8 +121,17 @@ export const ToggleUserActiveResponse = zod.object({
 });
 
 /**
- * @summary List particulars
+ * @summary List particulars (paginated)
  */
+export const listParticularsQueryPageDefault = 1;
+export const listParticularsQueryLimitDefault = 50;
+
+export const ListParticularsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  page: zod.coerce.number().default(listParticularsQueryPageDefault),
+  limit: zod.coerce.number().default(listParticularsQueryLimitDefault),
+});
+
 export const ListParticularsResponse = zod.object({
   data: zod.array(
     zod.object({
@@ -131,6 +140,9 @@ export const ListParticularsResponse = zod.object({
       createdAt: zod.coerce.date().optional(),
     }),
   ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
 });
 
 /**
@@ -167,8 +179,17 @@ export const DeleteParticularResponse = zod.object({
 });
 
 /**
- * @summary List units of measure
+ * @summary List units of measure (paginated)
  */
+export const listUomQueryPageDefault = 1;
+export const listUomQueryLimitDefault = 50;
+
+export const ListUomQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  page: zod.coerce.number().default(listUomQueryPageDefault),
+  limit: zod.coerce.number().default(listUomQueryLimitDefault),
+});
+
 export const ListUomResponse = zod.object({
   data: zod.array(
     zod.object({
@@ -177,6 +198,9 @@ export const ListUomResponse = zod.object({
       createdAt: zod.coerce.date().optional(),
     }),
   ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
 });
 
 /**
@@ -213,8 +237,17 @@ export const DeleteUomResponse = zod.object({
 });
 
 /**
- * @summary List payment statuses
+ * @summary List payment statuses (paginated)
  */
+export const listPaymentStatusesQueryPageDefault = 1;
+export const listPaymentStatusesQueryLimitDefault = 50;
+
+export const ListPaymentStatusesQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  page: zod.coerce.number().default(listPaymentStatusesQueryPageDefault),
+  limit: zod.coerce.number().default(listPaymentStatusesQueryLimitDefault),
+});
+
 export const ListPaymentStatusesResponse = zod.object({
   data: zod.array(
     zod.object({
@@ -223,6 +256,9 @@ export const ListPaymentStatusesResponse = zod.object({
       createdAt: zod.coerce.date().optional(),
     }),
   ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
 });
 
 /**
@@ -259,16 +295,29 @@ export const DeletePaymentStatusResponse = zod.object({
 });
 
 /**
- * @summary List projects
+ * @summary List projects (paginated)
  */
+export const listProjectsQueryPageDefault = 1;
+export const listProjectsQueryLimitDefault = 50;
+
+export const ListProjectsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  page: zod.coerce.number().default(listProjectsQueryPageDefault),
+  limit: zod.coerce.number().default(listProjectsQueryLimitDefault),
+});
+
 export const ListProjectsResponse = zod.object({
   data: zod.array(
     zod.object({
       id: zod.number(),
+      code: zod.string(),
       name: zod.string(),
       createdAt: zod.coerce.date().optional(),
     }),
   ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
 });
 
 /**
@@ -307,7 +356,7 @@ export const DeleteProjectResponse = zod.object({
 });
 
 /**
- * @summary List vendors (searchable)
+ * @summary List vendors (searchable, paginated)
  */
 export const listVendorsQueryPageDefault = 1;
 export const listVendorsQueryLimitDefault = 50;
@@ -427,6 +476,13 @@ export const GetVendorVouchersResponse = zod.object({
       projectName: zod.string(),
       vendorId: zod.number(),
       vendorName: zod.string(),
+      createdBy: zod.number(),
+      approvedBy: zod.number().nullish(),
+      approvedAt: zod.coerce.date().nullish(),
+      finalizedBy: zod.number().nullish(),
+      finalizedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
       versionId: zod.number(),
       versionNo: zod.number(),
       voucherNumber: zod.string(),
@@ -485,7 +541,7 @@ export const CreateReceiveVoucherBody = zod.object({
 });
 
 /**
- * @summary List expenses with filters
+ * @summary List expenses with filters (paginated)
  */
 export const listExpensesQueryPageDefault = 1;
 export const listExpensesQueryLimitDefault = 20;
@@ -508,10 +564,52 @@ export const ListExpensesResponse = zod.object({
     zod.object({
       expenseId: zod.number(),
       voucherType: zod.enum(["payment", "receive"]),
+      projectName: zod.string(),
+      vendorName: zod.string(),
+      voucherNumber: zod.string(),
+      expenseDate: zod.coerce.date(),
+      particularName: zod.string(),
+      uomName: zod.string(),
+      quantity: zod.string(),
+      pricePerUnit: zod.string(),
+      amount: zod.string(),
+      invoiceNumber: zod.string().nullish(),
+      paymentStatusName: zod.string(),
+      paymentStatusId: zod.number(),
+      versionId: zod.number(),
+      versionNo: zod.number(),
+      approvedAt: zod.coerce.date().nullish(),
+      finalizedAt: zod.coerce.date().nullish(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Get expense detail (includes documents)
+ */
+export const GetExpenseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetExpenseResponse = zod.object({
+  data: zod
+    .object({
+      expenseId: zod.number(),
+      voucherType: zod.enum(["payment", "receive"]),
       projectId: zod.number(),
       projectName: zod.string(),
       vendorId: zod.number(),
       vendorName: zod.string(),
+      createdBy: zod.number(),
+      approvedBy: zod.number().nullish(),
+      approvedAt: zod.coerce.date().nullish(),
+      finalizedBy: zod.number().nullish(),
+      finalizedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
       versionId: zod.number(),
       versionNo: zod.number(),
       voucherNumber: zod.string(),
@@ -528,45 +626,25 @@ export const ListExpensesResponse = zod.object({
       invoiceNumber: zod.string().nullish(),
       paymentStatusId: zod.number(),
       paymentStatusName: zod.string(),
-    }),
-  ),
-  total: zod.number(),
-  page: zod.number(),
-  limit: zod.number(),
-});
-
-/**
- * @summary Get expense detail
- */
-export const GetExpenseParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GetExpenseResponse = zod.object({
-  data: zod.object({
-    expenseId: zod.number(),
-    voucherType: zod.enum(["payment", "receive"]),
-    projectId: zod.number(),
-    projectName: zod.string(),
-    vendorId: zod.number(),
-    vendorName: zod.string(),
-    versionId: zod.number(),
-    versionNo: zod.number(),
-    voucherNumber: zod.string(),
-    expenseDate: zod.coerce.date(),
-    particularId: zod.number(),
-    particularName: zod.string(),
-    description: zod.string().nullish(),
-    transactionDetails: zod.string().nullish(),
-    uomId: zod.number(),
-    uomName: zod.string(),
-    quantity: zod.string(),
-    pricePerUnit: zod.string(),
-    amount: zod.string(),
-    invoiceNumber: zod.string().nullish(),
-    paymentStatusId: zod.number(),
-    paymentStatusName: zod.string(),
-  }),
+    })
+    .and(
+      zod.object({
+        documents: zod.array(
+          zod.object({
+            id: zod.number(),
+            expenseVersionId: zod.number(),
+            voucherNumber: zod.string(),
+            originalName: zod.string(),
+            storedName: zod.string(),
+            mimeType: zod.string().nullish(),
+            fileSize: zod.number(),
+            publicUrl: zod.string().nullish(),
+            fileOrder: zod.number(),
+            createdAt: zod.coerce.date().optional(),
+          }),
+        ),
+      }),
+    ),
 });
 
 /**
@@ -596,6 +674,13 @@ export const UpdateExpenseResponse = zod.object({
     projectName: zod.string(),
     vendorId: zod.number(),
     vendorName: zod.string(),
+    createdBy: zod.number(),
+    approvedBy: zod.number().nullish(),
+    approvedAt: zod.coerce.date().nullish(),
+    finalizedBy: zod.number().nullish(),
+    finalizedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
     versionId: zod.number(),
     versionNo: zod.number(),
     voucherNumber: zod.string(),
@@ -616,7 +701,7 @@ export const UpdateExpenseResponse = zod.object({
 });
 
 /**
- * @summary Delete expense (admin+)
+ * @summary Soft-delete expense (admin+)
  */
 export const DeleteExpenseParams = zod.object({
   id: zod.coerce.number(),
@@ -624,6 +709,88 @@ export const DeleteExpenseParams = zod.object({
 
 export const DeleteExpenseResponse = zod.object({
   success: zod.boolean(),
+});
+
+/**
+ * @summary Approve an expense (accounts+). Blocks further edits.
+ */
+export const ApproveExpenseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ApproveExpenseResponse = zod.object({
+  data: zod.object({
+    expenseId: zod.number(),
+    voucherType: zod.enum(["payment", "receive"]),
+    projectId: zod.number(),
+    projectName: zod.string(),
+    vendorId: zod.number(),
+    vendorName: zod.string(),
+    createdBy: zod.number(),
+    approvedBy: zod.number().nullish(),
+    approvedAt: zod.coerce.date().nullish(),
+    finalizedBy: zod.number().nullish(),
+    finalizedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+    versionId: zod.number(),
+    versionNo: zod.number(),
+    voucherNumber: zod.string(),
+    expenseDate: zod.coerce.date(),
+    particularId: zod.number(),
+    particularName: zod.string(),
+    description: zod.string().nullish(),
+    transactionDetails: zod.string().nullish(),
+    uomId: zod.number(),
+    uomName: zod.string(),
+    quantity: zod.string(),
+    pricePerUnit: zod.string(),
+    amount: zod.string(),
+    invoiceNumber: zod.string().nullish(),
+    paymentStatusId: zod.number(),
+    paymentStatusName: zod.string(),
+  }),
+});
+
+/**
+ * @summary Finalize an expense (accounts+). Requires prior approval. Permanently locks the record.
+ */
+export const FinalizeExpenseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const FinalizeExpenseResponse = zod.object({
+  data: zod.object({
+    expenseId: zod.number(),
+    voucherType: zod.enum(["payment", "receive"]),
+    projectId: zod.number(),
+    projectName: zod.string(),
+    vendorId: zod.number(),
+    vendorName: zod.string(),
+    createdBy: zod.number(),
+    approvedBy: zod.number().nullish(),
+    approvedAt: zod.coerce.date().nullish(),
+    finalizedBy: zod.number().nullish(),
+    finalizedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+    versionId: zod.number(),
+    versionNo: zod.number(),
+    voucherNumber: zod.string(),
+    expenseDate: zod.coerce.date(),
+    particularId: zod.number(),
+    particularName: zod.string(),
+    description: zod.string().nullish(),
+    transactionDetails: zod.string().nullish(),
+    uomId: zod.number(),
+    uomName: zod.string(),
+    quantity: zod.string(),
+    pricePerUnit: zod.string(),
+    amount: zod.string(),
+    invoiceNumber: zod.string().nullish(),
+    paymentStatusId: zod.number(),
+    paymentStatusName: zod.string(),
+  }),
 });
 
 /**
@@ -732,6 +899,13 @@ export const GetDashboardSummaryResponse = zod.object({
       projectName: zod.string(),
       vendorId: zod.number(),
       vendorName: zod.string(),
+      createdBy: zod.number(),
+      approvedBy: zod.number().nullish(),
+      approvedAt: zod.coerce.date().nullish(),
+      finalizedBy: zod.number().nullish(),
+      finalizedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
       versionId: zod.number(),
       versionNo: zod.number(),
       voucherNumber: zod.string(),

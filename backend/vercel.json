@@ -4,7 +4,7 @@
   "builds": [
     {
       "src": "api/index.ts",
-      "use": "@vercel/node@3.2.26"
+      "use": "@vercel/node@5.3.24"
     }
   ],
   "routes": [

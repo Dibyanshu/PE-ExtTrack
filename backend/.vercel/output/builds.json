@@ -4,8 +4,7 @@
   "argv": [
     "C:\\nvm4w\\nodejs\\node.exe",
     "C:\\Users\\dibyanshu\\AppData\\Local\\npm-cache\\_npx\\2e029410e3fc7830\\node_modules\\vercel\\dist\\vc.js",
-    "build",
-    "--debug"
+    "build"
   ],
   "cliVersion": "53.3.2",
   "builds": [
@@ -14,7 +13,7 @@
       "requirePath": "D:\\Own\\PE-ExtTrack\\backend\\.vercel\\builders\\node_modules\\@vercel\\node\\dist\\index",
       "apiVersion": 3,
       "src": "api/index.ts",
-      "use": "@vercel/node@3.2.26"
+      "use": "@vercel/node@5.3.24"
     }
   ]
 }

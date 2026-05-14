@@ -1,10 +1,10 @@
-import express, { type Express } from "express";
+import express from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
-const app: Express = express();
+const app = express();
 
 app.use(
   pinoHttp({
@@ -35,9 +35,9 @@ app.use("/api", router);
 app.use(
   (
     err: Error & { cause?: Error & { sqlMessage?: string; errno?: number; code?: string } },
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction,
+    _req: any,
+    res: any,
+    _next: any,
   ) => {
     const cause = err.cause;
     const detail = cause?.sqlMessage ?? cause?.message ?? "";

@@ -1,6 +1,7 @@
 {
   "handler": "api/index.js",
   "runtime": "nodejs22.x",
+  "architecture": "x86_64",
   "environment": {},
   "launcherType": "Nodejs",
   "shouldAddHelpers": true,
@@ -14,8 +15,8 @@
     "node_modules/pino": "node_modules/pino",
     "node_modules/@workspace/db": "node_modules/@workspace/db",
     "node_modules/bcryptjs": "node_modules/bcryptjs",
-    "node_modules/multer": "node_modules/multer",
     "node_modules/jsonwebtoken": "node_modules/jsonwebtoken",
-    "node_modules/@workspace/api-zod": "node_modules/@workspace/api-zod"
+    "node_modules/@workspace/api-zod": "node_modules/@workspace/api-zod",
+    "node_modules/multer": "node_modules/multer"
   }
 }

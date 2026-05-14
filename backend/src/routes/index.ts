@@ -1,4 +1,4 @@
-import { Router, type IRouter, static as serveStatic } from "express";
+import { Router, static as serveStatic } from "express";
 import path from "path";
 import healthRouter from "./health";
 import authRouter from "./auth";
@@ -10,7 +10,7 @@ import expensesRouter from "./expenses";
 import documentsRouter from "./documents";
 import dashboardRouter from "./dashboard";
 
-const router: IRouter = Router();
+const router = Router();
 
 router.use(healthRouter);
 router.use(authRouter);

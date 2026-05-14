@@ -53,10 +53,10 @@ jobs:
         run: pnpm install
 
       - name: Typecheck backend
-        run: pnpm --filter @workspace/api-server run typecheck
+        run: pnpm --filter @workspace/backend run typecheck
 
       - name: Build backend
-        run: pnpm --filter @workspace/api-server run build
+        run: pnpm --filter @workspace/backend run build
 
       - name: Link Vercel project
         working-directory: backend

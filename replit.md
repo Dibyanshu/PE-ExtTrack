@@ -4,7 +4,7 @@ Full-stack expense-tracking system for a copper-production company. Supports Pay
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — build and start the API server
+- `pnpm --filter @workspace/backend run dev` — build and start the API server
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate React Query hooks + Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push Drizzle schema changes to the MySQL database (dev only)
 - `pnpm --filter @workspace/db run seed` — seed master data and default users

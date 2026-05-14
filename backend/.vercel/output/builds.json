@@ -3,17 +3,18 @@
   "target": "preview",
   "argv": [
     "C:\\nvm4w\\nodejs\\node.exe",
-    "C:\\Users\\dibyanshu\\AppData\\Local\\npm-cache\\_npx\\67eb4586ca667318\\node_modules\\vercel\\dist\\vc.js",
-    "build"
+    "C:\\Users\\dibyanshu\\AppData\\Local\\npm-cache\\_npx\\2e029410e3fc7830\\node_modules\\vercel\\dist\\vc.js",
+    "build",
+    "--debug"
   ],
-  "cliVersion": "54.0.0",
+  "cliVersion": "53.3.2",
   "builds": [
     {
       "require": "@vercel/node",
-      "requirePath": "C:\\Users\\dibyanshu\\AppData\\Local\\npm-cache\\_npx\\67eb4586ca667318\\node_modules\\@vercel\\node\\dist\\index",
+      "requirePath": "D:\\Own\\PE-ExtTrack\\backend\\.vercel\\builders\\node_modules\\@vercel\\node\\dist\\index",
       "apiVersion": 3,
       "src": "api/index.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node@3.2.26"
     }
   ]
 }

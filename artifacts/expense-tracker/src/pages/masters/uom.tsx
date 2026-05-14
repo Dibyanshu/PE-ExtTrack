@@ -14,7 +14,7 @@ export default function Uom() {
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useListUom({ search: search || undefined, page, limit: 20 });
+  const { data, isLoading, isError } = useListUom({ search: search || undefined, page, limit: 20 });
   const create = useCreateUom();
   const update = useUpdateUom();
   const remove = useDeleteUom();
@@ -52,6 +52,7 @@ export default function Uom() {
       items={data?.data}
       total={data?.total}
       isLoading={isLoading}
+      isError={isError}
       page={page}
       setPage={setPage}
       search={search}

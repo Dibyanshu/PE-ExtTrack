@@ -14,7 +14,7 @@ export default function Particulars() {
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useListParticulars({ search: search || undefined, page, limit: 20 });
+  const { data, isLoading, isError } = useListParticulars({ search: search || undefined, page, limit: 20 });
   const create = useCreateParticular();
   const update = useUpdateParticular();
   const remove = useDeleteParticular();
@@ -52,6 +52,7 @@ export default function Particulars() {
       items={data?.data}
       total={data?.total}
       isLoading={isLoading}
+      isError={isError}
       page={page}
       setPage={setPage}
       search={search}

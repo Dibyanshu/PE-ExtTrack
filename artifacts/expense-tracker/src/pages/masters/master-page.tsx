@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Search, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface MasterItem {
   id: number;
@@ -18,6 +19,7 @@ interface MasterPageProps {
   items?: MasterItem[];
   total?: number;
   isLoading: boolean;
+  isError?: boolean;
   page: number;
   setPage: (p: number) => void;
   search: string;
@@ -31,7 +33,7 @@ interface MasterPageProps {
 const PAGE_SIZE = 20;
 
 export function MasterPage({
-  title, items, total, isLoading,
+  title, items, total, isLoading, isError,
   page, setPage, search, setSearch,
   onAdd, onEdit, onDelete,
 }: MasterPageProps) {
@@ -83,6 +85,16 @@ export function MasterPage({
       const msg = e instanceof Error ? e.message : "An error occurred";
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally { setSubmitting(false); }
+  }
+
+  if (isError) {
+    return (
+      <Alert variant="destructive" data-testid="master-error">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>Failed to load {title.toLowerCase()} data. Please try refreshing.</AlertDescription>
+      </Alert>
+    );
   }
 
   return (

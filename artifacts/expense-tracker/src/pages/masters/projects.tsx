@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Search, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const PAGE_SIZE = 20;
 const schema = z.object({
@@ -36,7 +37,7 @@ export default function Projects() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useListProjects({ search: search || undefined, page, limit: PAGE_SIZE });
+  const { data, isLoading, isError } = useListProjects({ search: search || undefined, page, limit: PAGE_SIZE });
   const create = useCreateProject();
   const update = useUpdateProject();
   const remove = useDeleteProject();
@@ -111,6 +112,14 @@ export default function Projects() {
             data-testid="input-search-projects" />
         </div>
       </div>
+
+      {isError && (
+        <Alert variant="destructive" data-testid="projects-error">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>Failed to load projects. Please try refreshing.</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="bg-card border-border shadow-panel">
         <CardContent className="p-0">

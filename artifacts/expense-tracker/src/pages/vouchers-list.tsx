@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ChevronLeft, ChevronRight, Search, Eye } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Search, Eye, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const PAGE_SIZE = 20;
 
@@ -43,7 +44,7 @@ export default function VouchersList({ voucherType }: VouchersListProps) {
     ...(voucherNumber ? { voucherNumber } : {}),
   };
 
-  const { data: expenses, isLoading } = useListExpenses(params);
+  const { data: expenses, isLoading, isError: expensesError } = useListExpenses(params);
   const { data: projects } = useListProjects({ limit: 200 });
   const { data: particulars } = useListParticulars({ limit: 200 });
   const { data: statuses } = useListPaymentStatuses({ limit: 200 });
@@ -57,6 +58,16 @@ export default function VouchersList({ voucherType }: VouchersListProps) {
   function resetFilters() {
     setFrom(""); setTo(""); setProjectId(""); setParticularId("");
     setPaymentStatusId(""); setVoucherNumber(""); setPage(1);
+  }
+
+  if (expensesError) {
+    return (
+      <Alert variant="destructive" data-testid="vouchers-error">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>Failed to load vouchers. Please try refreshing.</AlertDescription>
+      </Alert>
+    );
   }
 
   return (

@@ -14,7 +14,7 @@ export default function PaymentStatus() {
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useListPaymentStatuses({ search: search || undefined, page, limit: 20 });
+  const { data, isLoading, isError } = useListPaymentStatuses({ search: search || undefined, page, limit: 20 });
   const create = useCreatePaymentStatus();
   const update = useUpdatePaymentStatus();
   const remove = useDeletePaymentStatus();
@@ -52,6 +52,7 @@ export default function PaymentStatus() {
       items={data?.data}
       total={data?.total}
       isLoading={isLoading}
+      isError={isError}
       page={page}
       setPage={setPage}
       search={search}

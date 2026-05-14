@@ -33,14 +33,25 @@ const queryClient = new QueryClient({
 
 setAuthTokenGetter(() => localStorage.getItem("pe_token"));
 
+const ALL_ROLES = ["expense_entry", "accounts", "admin", "superadmin"];
+const ADMIN_ROLES = ["admin", "superadmin"];
+
 interface GuardProps {
   roles?: string[];
   children: React.ReactNode;
 }
 
 function Guard({ roles, children }: GuardProps) {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, hydrated } = useAuth();
   const [location] = useLocation();
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return location !== "/login" ? <Redirect to="/login" /> : null;
@@ -53,13 +64,28 @@ function Guard({ roles, children }: GuardProps) {
   return <AppLayout>{children}</AppLayout>;
 }
 
-const ALL_ROLES = ["expense_entry", "accounts", "admin", "superadmin"];
-const ADMIN_ROLES = ["admin", "superadmin"];
+function LoginRoute() {
+  const { isAuthenticated, hydrated } = useAuth();
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return <Login />;
+}
 
 function Router() {
   return (
     <Switch>
-      <Route path="/login" component={Login} />
+      <Route path="/login" component={LoginRoute} />
 
       <Route path="/">
         {() => <Guard><Dashboard /></Guard>}

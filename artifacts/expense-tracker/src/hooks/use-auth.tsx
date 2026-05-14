@@ -10,6 +10,7 @@ interface AuthContextType {
   login: (token: string, user: AuthUser) => void;
   logout: () => void;
   isAuthenticated: boolean;
+  hydrated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,21 +18,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const [, setLocation] = useLocation();
 
   useEffect(() => {
     const storedToken = localStorage.getItem("pe_token");
     const storedUser = localStorage.getItem("pe_user");
-    
+
     if (storedToken && storedUser) {
       try {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
-      } catch (e) {
+      } catch {
         localStorage.removeItem("pe_token");
         localStorage.removeItem("pe_user");
       }
     }
+    setHydrated(true);
   }, []);
 
   const login = (newToken: string, newUser: AuthUser) => {
@@ -53,12 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        role: user?.role || null,
-        canViewHistory: user?.canViewHistory || false,
+        role: user?.role ?? null,
+        canViewHistory: user?.canViewHistory ?? false,
         token,
         login,
         logout,
         isAuthenticated: !!token,
+        hydrated,
       }}
     >
       {children}

@@ -1,7 +1,8 @@
 import { useGetDashboardSummary } from "@workspace/api-client-react";
+import type { StatusSummary } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, IndianRupee, FileText, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { AlertCircle, IndianRupee, FileText, ArrowUpRight, ArrowDownRight, CreditCard } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Dashboard() {
@@ -20,14 +21,8 @@ export default function Dashboard() {
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
-            <CardContent><Skeleton className="h-64 w-full" /></CardContent>
-          </Card>
-          <Card>
-            <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
-            <CardContent><Skeleton className="h-64 w-full" /></CardContent>
-          </Card>
+          <Card><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
+          <Card><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
         </div>
       </div>
     );
@@ -35,7 +30,7 @@ export default function Dashboard() {
 
   if (isError || !summary) {
     return (
-      <Alert variant="destructive">
+      <Alert variant="destructive" data-testid="dash-error">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>Failed to load dashboard summary.</AlertDescription>
@@ -45,11 +40,13 @@ export default function Dashboard() {
 
   const paymentType = summary.byType.find(t => t.voucherType === "payment");
   const receiveType = summary.byType.find(t => t.voucherType === "receive");
+  const byStatus: StatusSummary[] = summary.byStatus ?? [];
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <h1 className="text-3xl font-bold tracking-tight uppercase text-foreground">Dashboard</h1>
-      
+
+      {/* KPI cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-card border-border shadow-panel">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -60,7 +57,7 @@ export default function Dashboard() {
             <div className="text-2xl font-bold font-mono" data-testid="dash-total-count">{summary.totalCount}</div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-card border-border shadow-panel">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Value</CardTitle>
@@ -98,6 +95,41 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* Payment status summary */}
+      <Card className="bg-card border-border shadow-panel" data-testid="dash-payment-status-summary">
+        <CardHeader className="flex flex-row items-center gap-2">
+          <CreditCard className="w-4 h-4 text-primary" />
+          <CardTitle className="text-lg font-bold uppercase tracking-wide">By Payment Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {byStatus.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No data available.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {byStatus.map((s: StatusSummary) => {
+                const total = byStatus.reduce((acc, x) => acc + Number(x.totalAmount), 0);
+                const pct = total > 0 ? Math.round((Number(s.totalAmount) / total) * 100) : 0;
+                return (
+                  <div key={s.paymentStatusId} className="flex flex-col gap-1 p-3 rounded-md border border-border bg-muted/20"
+                    data-testid={`dash-status-${s.paymentStatusId}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">{s.paymentStatusName}</span>
+                      <span className="text-xs font-mono text-muted-foreground">{s.count} vouchers</span>
+                    </div>
+                    <div className="font-mono font-bold text-foreground">₹{Number(s.totalAmount).toLocaleString('en-IN')}</div>
+                    <div className="w-full h-1.5 rounded-full bg-muted mt-1 overflow-hidden">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-xs text-muted-foreground font-mono">{pct}% of total</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent vouchers + by project */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-card border-border shadow-panel">
           <CardHeader>
@@ -106,13 +138,14 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {summary.recentVouchers.map((v) => (
-                <div key={v.expenseId} className="flex items-center justify-between p-3 rounded-md bg-muted/30 border border-border">
+                <div key={v.expenseId} className="flex items-center justify-between p-3 rounded-md bg-muted/30 border border-border"
+                  data-testid={`dash-recent-${v.expenseId}`}>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm font-bold text-primary">{v.voucherNumber}</span>
                       <span className="text-xs uppercase px-1.5 py-0.5 rounded-sm bg-background border border-border">{v.paymentStatusName}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">{v.projectName} • {v.vendorName}</div>
+                    <div className="text-xs text-muted-foreground mt-1">{v.projectName} · {v.vendorName}</div>
                   </div>
                   <div className={`font-mono font-bold ${v.voucherType === 'payment' ? 'text-destructive' : 'text-green-500'}`}>
                     {v.voucherType === 'payment' ? '-' : '+'}₹{Number(v.amount).toLocaleString('en-IN')}
@@ -133,7 +166,8 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {summary.byProject.map((p) => (
-                <div key={p.projectId} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                <div key={p.projectId} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0"
+                  data-testid={`dash-project-${p.projectId}`}>
                   <div>
                     <div className="font-bold">{p.projectName}</div>
                     <div className="text-xs text-muted-foreground mt-0.5 font-mono">{p.count} vouchers</div>

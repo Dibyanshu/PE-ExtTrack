@@ -7,7 +7,7 @@ import { writeAudit } from "../lib/audit";
 
 const router = Router();
 
-router.get("/users", requireRole("admin"), async (req, res) => {
+router.get("/users", requireRole("admin"), async (_req, res) => {
   const rows = await db
     .select({
       id: users.id,
@@ -28,7 +28,7 @@ router.post("/users", requireRole("admin"), async (req, res) => {
     name: string;
     email: string;
     password: string;
-    role: string;
+    role: "expense_entry" | "accounts" | "admin" | "superadmin";
     canViewHistory?: boolean;
   };
 
@@ -38,42 +38,55 @@ router.post("/users", requireRole("admin"), async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const [result] = await db.insert(users).values({
+  const [inserted] = await db.insert(users).values({
     name,
     email: email.toLowerCase().trim(),
     passwordHash,
-    role: role as "expense_entry" | "accounts" | "admin" | "superadmin",
+    role,
     canViewHistory: canViewHistory ? 1 : 0,
     isActive: 1,
-  });
+  }).$returningId();
 
-  const newId = Number((result as { insertId: number }).insertId);
-  await writeAudit({ entityType: "user", entityId: newId, action: "create", newValue: { name, email, role }, userId: res.locals.user.id });
+  const newId = inserted.id;
+  await writeAudit({
+    entityType: "user",
+    entityId: newId,
+    action: "create",
+    newValue: { name, email, role },
+    userId: res.locals.user.id,
+  });
   res.status(201).json({ id: newId });
 });
 
 router.put("/users/:id", requireRole("admin"), async (req, res) => {
   const id = Number(req.params.id);
+  const [existing] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "User not found" }); return; }
+
   const { name, email, role, canViewHistory, password } = req.body as {
     name?: string;
     email?: string;
-    role?: string;
+    role?: "expense_entry" | "accounts" | "admin" | "superadmin";
     canViewHistory?: boolean;
     password?: string;
   };
 
-  const [existing] = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  if (!existing) { res.status(404).json({ error: "User not found" }); return; }
-
   const updates: Partial<typeof users.$inferInsert> = {};
-  if (name) updates.name = name;
-  if (email) updates.email = email.toLowerCase().trim();
-  if (role) updates.role = role as "expense_entry" | "accounts" | "admin" | "superadmin";
+  if (name !== undefined) updates.name = name;
+  if (email !== undefined) updates.email = email.toLowerCase().trim();
+  if (role !== undefined) updates.role = role;
   if (canViewHistory !== undefined) updates.canViewHistory = canViewHistory ? 1 : 0;
   if (password) updates.passwordHash = await bcrypt.hash(password, 12);
 
   await db.update(users).set(updates).where(eq(users.id, id));
-  await writeAudit({ entityType: "user", entityId: id, action: "update", oldValue: existing, newValue: updates, userId: res.locals.user.id });
+  await writeAudit({
+    entityType: "user",
+    entityId: id,
+    action: "update",
+    oldValue: existing,
+    newValue: updates,
+    userId: res.locals.user.id,
+  });
   res.json({ success: true });
 });
 
@@ -84,7 +97,12 @@ router.patch("/users/:id/toggle-active", requireRole("admin"), async (req, res) 
 
   const newActive = existing.isActive === 1 ? 0 : 1;
   await db.update(users).set({ isActive: newActive }).where(eq(users.id, id));
-  await writeAudit({ entityType: "user", entityId: id, action: newActive ? "activate" : "deactivate", userId: res.locals.user.id });
+  await writeAudit({
+    entityType: "user",
+    entityId: id,
+    action: newActive ? "activate" : "deactivate",
+    userId: res.locals.user.id,
+  });
   res.json({ isActive: newActive === 1 });
 });
 

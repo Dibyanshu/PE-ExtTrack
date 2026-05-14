@@ -7,20 +7,21 @@ import {
   paymentStatusMaster,
   vendorMaster,
 } from "@workspace/db";
-import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc, isNull } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
-import { particularsMaster, uomMaster } from "@workspace/db";
 
 const router = Router();
 
 router.get("/dashboard/summary", requireAuth, async (req, res) => {
   const { from, to } = req.query as { from?: string; to?: string };
 
-  const dateConditions: any[] = [];
-  if (from) dateConditions.push(gte(expenseVersions.expenseDate, new Date(from)));
-  if (to) dateConditions.push(lte(expenseVersions.expenseDate, new Date(to)));
+  // expenseDate is mode:"string" — compare with ISO date strings, not Date objects
+  const dateConditions: SQL<unknown>[] = [isNull(expenses.deletedAt)];
+  if (from) dateConditions.push(gte(expenseVersions.expenseDate, from));
+  if (to) dateConditions.push(lte(expenseVersions.expenseDate, to));
 
-  const baseWhere = dateConditions.length ? and(...dateConditions) : undefined;
+  const baseWhere = and(...dateConditions);
 
   const joinBase = db
     .select({

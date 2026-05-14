@@ -15,7 +15,13 @@ import { sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { users } from "./users";
-import { particularsMaster, uomMaster, paymentStatusMaster, projectMaster, vendorMaster } from "./masters";
+import {
+  particularsMaster,
+  uomMaster,
+  paymentStatusMaster,
+  projectMaster,
+  vendorMaster,
+} from "./masters";
 
 export const expenses = mysqlTable("expenses", {
   id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
@@ -30,6 +36,11 @@ export const expenses = mysqlTable("expenses", {
   createdBy: bigint("created_by", { mode: "number", unsigned: true })
     .notNull()
     .references(() => users.id),
+  approvedBy: bigint("approved_by", { mode: "number", unsigned: true }).references(
+    () => users.id,
+  ),
+  approvedAt: timestamp("approved_at"),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at")
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),
@@ -48,7 +59,7 @@ export const expenseVersions = mysqlTable(
       .references(() => expenses.id),
     versionNo: int("version_no", { unsigned: true }).notNull(),
     voucherNumber: varchar("voucher_number", { length: 32 }).notNull(),
-    expenseDate: date("expense_date").notNull(),
+    expenseDate: date("expense_date", { mode: "string" }).notNull(),
     particularId: bigint("particular_id", { mode: "number", unsigned: true })
       .notNull()
       .references(() => particularsMaster.id),
@@ -80,6 +91,9 @@ export const expenseVersions = mysqlTable(
 export const insertExpenseSchema = createInsertSchema(expenses).omit({
   id: true,
   currentVersionId: true,
+  approvedBy: true,
+  approvedAt: true,
+  deletedAt: true,
   createdAt: true,
   updatedAt: true,
 });

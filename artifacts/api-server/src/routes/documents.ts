@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
-import { db, documents, expenseVersions, expenses } from "@workspace/db";
+import { db, documents, expenseVersions } from "@workspace/db";
 import { eq, and, count } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth";
 
@@ -23,7 +23,9 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = [
-      "image/jpeg", "image/png", "image/webp",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -46,7 +48,12 @@ router.post(
     const [version] = await db
       .select()
       .from(expenseVersions)
-      .where(and(eq(expenseVersions.id, versionId), eq(expenseVersions.expenseId, expenseId)))
+      .where(
+        and(
+          eq(expenseVersions.id, versionId),
+          eq(expenseVersions.expenseId, expenseId),
+        ),
+      )
       .limit(1);
     if (!version) { res.status(404).json({ error: "Version not found" }); return; }
 
@@ -64,21 +71,29 @@ router.post(
       files.map(async (file, i) => {
         const relativePath = path.relative(process.cwd(), file.path);
         const publicUrl = `/api/uploads/${file.filename}`;
-        const [res] = await db.insert(documents).values({
-          expenseVersionId: versionId,
-          voucherNumber: version.voucherNumber,
-          invoiceNumber: version.invoiceNumber ?? null,
-          fileOrder: startOrder + i,
+        const [docInserted] = await db
+          .insert(documents)
+          .values({
+            expenseVersionId: versionId,
+            voucherNumber: version.voucherNumber,
+            invoiceNumber: version.invoiceNumber ?? null,
+            fileOrder: startOrder + i,
+            originalName: file.originalname,
+            storedName: file.filename,
+            mimeType: file.mimetype,
+            fileSize: file.size,
+            relativePath,
+            publicUrl,
+            storageDriver: "local",
+            uploadedBy: userId,
+          })
+          .$returningId();
+
+        return {
+          id: docInserted.id,
           originalName: file.originalname,
-          storedName: file.filename,
-          mimeType: file.mimetype,
-          fileSize: file.size,
-          relativePath,
           publicUrl,
-          storageDriver: "local",
-          uploadedBy: userId,
-        });
-        return { id: Number((res as any).insertId), originalName: file.originalname, publicUrl };
+        };
       }),
     );
 
@@ -86,24 +101,33 @@ router.post(
   },
 );
 
-router.get("/expenses/:expenseId/versions/:versionId/documents", requireRole("expense_entry"), async (req, res) => {
-  const expenseId = Number(req.params.expenseId);
-  const versionId = Number(req.params.versionId);
+router.get(
+  "/expenses/:expenseId/versions/:versionId/documents",
+  requireRole("expense_entry"),
+  async (req, res) => {
+    const expenseId = Number(req.params.expenseId);
+    const versionId = Number(req.params.versionId);
 
-  const [version] = await db
-    .select()
-    .from(expenseVersions)
-    .where(and(eq(expenseVersions.id, versionId), eq(expenseVersions.expenseId, expenseId)))
-    .limit(1);
-  if (!version) { res.status(404).json({ error: "Version not found" }); return; }
+    const [version] = await db
+      .select()
+      .from(expenseVersions)
+      .where(
+        and(
+          eq(expenseVersions.id, versionId),
+          eq(expenseVersions.expenseId, expenseId),
+        ),
+      )
+      .limit(1);
+    if (!version) { res.status(404).json({ error: "Version not found" }); return; }
 
-  const docs = await db
-    .select()
-    .from(documents)
-    .where(eq(documents.expenseVersionId, versionId))
-    .orderBy(documents.fileOrder);
+    const docs = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.expenseVersionId, versionId))
+      .orderBy(documents.fileOrder);
 
-  res.json({ data: docs });
-});
+    res.json({ data: docs });
+  },
+);
 
 export default router;

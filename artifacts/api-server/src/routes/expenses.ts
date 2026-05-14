@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { SQL } from "drizzle-orm";
 import {
   db,
   expenses,
@@ -9,9 +10,8 @@ import {
   projectMaster,
   vendorMaster,
   documents,
-  auditLogs,
 } from "@workspace/db";
-import { eq, and, gte, lte, like, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, like, desc, sql, isNull } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { writeAudit } from "../lib/audit";
 import { getVoucherDetail } from "./vouchers";
@@ -36,17 +36,21 @@ router.get("/expenses", requireAuth, async (req, res) => {
   const limitNum = Math.min(100, Number(limit));
   const offset = (pageNum - 1) * limitNum;
 
-  const conditions: any[] = [];
-  if (from) conditions.push(gte(expenseVersions.expenseDate, new Date(from)));
-  if (to) conditions.push(lte(expenseVersions.expenseDate, new Date(to)));
+  // Always exclude soft-deleted expenses
+  // expenseDate is mode:"string" — compare with ISO date strings, not Date objects
+  const conditions: SQL<unknown>[] = [isNull(expenses.deletedAt)];
+  if (from) conditions.push(gte(expenseVersions.expenseDate, from));
+  if (to) conditions.push(lte(expenseVersions.expenseDate, to));
   if (projectId) conditions.push(eq(expenses.projectId, Number(projectId)));
   if (particularId) conditions.push(eq(expenseVersions.particularId, Number(particularId)));
   if (paymentStatusId) conditions.push(eq(expenseVersions.paymentStatusId, Number(paymentStatusId)));
   if (vendorId) conditions.push(eq(expenses.vendorId, Number(vendorId)));
-  if (voucherType === "payment" || voucherType === "receive") conditions.push(eq(expenses.voucherType, voucherType));
+  if (voucherType === "payment" || voucherType === "receive") {
+    conditions.push(eq(expenses.voucherType, voucherType));
+  }
   if (voucherNumber) conditions.push(like(expenseVersions.voucherNumber, `%${voucherNumber}%`));
 
-  const whereClause = conditions.length ? and(...conditions) : undefined;
+  const whereClause = and(...conditions);
 
   const [rows, countResult] = await Promise.all([
     db
@@ -67,6 +71,7 @@ router.get("/expenses", requireAuth, async (req, res) => {
         paymentStatusId: expenseVersions.paymentStatusId,
         versionId: expenseVersions.id,
         versionNo: expenseVersions.versionNo,
+        approvedAt: expenses.approvedAt,
       })
       .from(expenses)
       .innerJoin(expenseVersions, eq(expenseVersions.id, expenses.currentVersionId!))
@@ -94,6 +99,14 @@ router.get("/expenses/:id", requireAuth, async (req, res) => {
   const detail = await getVoucherDetail(expenseId);
   if (!detail) { res.status(404).json({ error: "Expense not found" }); return; }
 
+  // Check soft-deleted
+  const [exp] = await db
+    .select({ deletedAt: expenses.deletedAt })
+    .from(expenses)
+    .where(eq(expenses.id, expenseId))
+    .limit(1);
+  if (exp?.deletedAt !== null) { res.status(404).json({ error: "Expense not found" }); return; }
+
   const docs = await db
     .select()
     .from(documents)
@@ -110,9 +123,15 @@ router.put("/expenses/:id", requireRole("expense_entry"), async (req, res) => {
   const [existing] = await db
     .select()
     .from(expenses)
-    .where(eq(expenses.id, expenseId))
+    .where(and(eq(expenses.id, expenseId), isNull(expenses.deletedAt)))
     .limit(1);
   if (!existing) { res.status(404).json({ error: "Expense not found" }); return; }
+
+  // Cannot edit an approved expense
+  if (existing.approvedAt !== null) {
+    res.status(409).json({ error: "Cannot edit an already-approved expense" });
+    return;
+  }
 
   const [lastVersion] = await db
     .select({ versionNo: expenseVersions.versionNo })
@@ -139,7 +158,17 @@ router.put("/expenses/:id", requireRole("expense_entry"), async (req, res) => {
     pricePerUnit,
     invoiceNumber,
     paymentStatusId,
-  } = req.body;
+  } = req.body as {
+    expenseDate?: string;
+    particularId?: number;
+    description?: string;
+    transactionDetails?: string;
+    uomId?: number;
+    quantity?: number;
+    pricePerUnit?: number;
+    invoiceNumber?: string;
+    paymentStatusId?: number;
+  };
 
   const qty = quantity ?? prevVersion?.quantity;
   const ppu = pricePerUnit ?? prevVersion?.pricePerUnit;
@@ -148,54 +177,85 @@ router.put("/expenses/:id", requireRole("expense_entry"), async (req, res) => {
   let newVersionId!: number;
 
   await db.transaction(async (tx) => {
-    const [verResult] = await tx.insert(expenseVersions).values({
-      expenseId,
-      versionNo: nextVersionNo,
-      voucherNumber: prevVersion!.voucherNumber,
-      expenseDate: expenseDate ?? prevVersion!.expenseDate,
-      particularId: particularId != null ? Number(particularId) : prevVersion!.particularId,
-      description: description ?? prevVersion?.description,
-      transactionDetails: transactionDetails ?? prevVersion?.transactionDetails,
-      uomId: uomId != null ? Number(uomId) : prevVersion!.uomId,
-      quantity: String(qty),
-      pricePerUnit: String(ppu),
-      amount,
-      invoiceNumber: invoiceNumber ?? prevVersion?.invoiceNumber,
-      paymentStatusId: paymentStatusId != null ? Number(paymentStatusId) : prevVersion!.paymentStatusId,
-      createdBy: userId,
-    });
-    newVersionId = Number((verResult as any).insertId);
+    const [verInserted] = await tx
+      .insert(expenseVersions)
+      .values({
+        expenseId,
+        versionNo: nextVersionNo,
+        voucherNumber: prevVersion!.voucherNumber,
+        expenseDate: expenseDate ?? prevVersion!.expenseDate,
+        particularId: particularId != null ? Number(particularId) : prevVersion!.particularId,
+        description: description ?? prevVersion?.description,
+        transactionDetails: transactionDetails ?? prevVersion?.transactionDetails,
+        uomId: uomId != null ? Number(uomId) : prevVersion!.uomId,
+        quantity: String(qty),
+        pricePerUnit: String(ppu),
+        amount,
+        invoiceNumber: invoiceNumber ?? prevVersion?.invoiceNumber,
+        paymentStatusId: paymentStatusId != null ? Number(paymentStatusId) : prevVersion!.paymentStatusId,
+        createdBy: userId,
+      })
+      .$returningId();
 
-    await tx.update(expenses).set({ currentVersionId: newVersionId }).where(eq(expenses.id, expenseId));
+    newVersionId = verInserted.id;
+    await tx
+      .update(expenses)
+      .set({ currentVersionId: newVersionId })
+      .where(eq(expenses.id, expenseId));
   });
 
-  await writeAudit({ entityType: "expense", entityId: expenseId, action: "update", oldValue: prevVersion, newValue: req.body, userId });
+  await writeAudit({
+    entityType: "expense",
+    entityId: expenseId,
+    action: "update",
+    oldValue: prevVersion,
+    newValue: req.body,
+    userId,
+  });
   const detail = await getVoucherDetail(expenseId);
   res.json({ data: detail });
 });
 
+// Soft-delete — admin+ only; sets deleted_at timestamp instead of removing rows
 router.delete("/expenses/:id", requireRole("admin"), async (req, res) => {
   const expenseId = Number(req.params.id);
-  const [existing] = await db.select().from(expenses).where(eq(expenses.id, expenseId)).limit(1);
+
+  const [existing] = await db
+    .select()
+    .from(expenses)
+    .where(and(eq(expenses.id, expenseId), isNull(expenses.deletedAt)))
+    .limit(1);
   if (!existing) { res.status(404).json({ error: "Expense not found" }); return; }
 
-  await writeAudit({ entityType: "expense", entityId: expenseId, action: "delete", oldValue: existing, userId: res.locals.user.id });
-
-  await db.transaction(async (tx) => {
-    await tx.update(expenses).set({ currentVersionId: null }).where(eq(expenses.id, expenseId));
-    await tx.delete(expenseVersions).where(eq(expenseVersions.expenseId, expenseId));
-    await tx.delete(expenses).where(eq(expenses.id, expenseId));
+  await writeAudit({
+    entityType: "expense",
+    entityId: expenseId,
+    action: "delete",
+    oldValue: existing,
+    userId: res.locals.user.id,
   });
+
+  await db
+    .update(expenses)
+    .set({ deletedAt: new Date() })
+    .where(eq(expenses.id, expenseId));
 
   res.json({ success: true });
 });
 
 router.get("/expenses/:id/history", requireAuth, async (req, res) => {
   const user = res.locals.user;
-  if (!user.canViewHistory) { res.status(403).json({ error: "History access not permitted" }); return; }
+  if (!user.canViewHistory) {
+    res.status(403).json({ error: "History access not permitted" });
+    return;
+  }
 
   const expenseId = Number(req.params.id);
-  const [exp] = await db.select().from(expenses).where(eq(expenses.id, expenseId)).limit(1);
+  const [exp] = await db
+    .select()
+    .from(expenses)
+    .where(and(eq(expenses.id, expenseId), isNull(expenses.deletedAt)))
+    .limit(1);
   if (!exp) { res.status(404).json({ error: "Expense not found" }); return; }
 
   const versions = await db

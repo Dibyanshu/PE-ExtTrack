@@ -8,16 +8,15 @@ import {
   paymentStatusMaster,
   projectMaster,
   vendorMaster,
-  users,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth";
 import { nextVoucherNumber } from "../lib/voucher";
 import { writeAudit } from "../lib/audit";
 
 const router = Router();
 
-async function getVoucherDetail(expenseId: number) {
+export async function getVoucherDetail(expenseId: number) {
   const [row] = await db
     .select({
       expenseId: expenses.id,
@@ -27,6 +26,8 @@ async function getVoucherDetail(expenseId: number) {
       vendorId: expenses.vendorId,
       vendorName: vendorMaster.name,
       createdBy: expenses.createdBy,
+      approvedBy: expenses.approvedBy,
+      approvedAt: expenses.approvedAt,
       createdAt: expenses.createdAt,
       updatedAt: expenses.updatedAt,
       versionId: expenseVersions.id,
@@ -59,9 +60,23 @@ async function getVoucherDetail(expenseId: number) {
   return row ?? null;
 }
 
+interface CreateVoucherBody {
+  projectId: number;
+  vendorId: number;
+  expenseDate: string;
+  particularId: number;
+  description?: string;
+  transactionDetails?: string;
+  uomId: number;
+  quantity: number;
+  pricePerUnit: number;
+  invoiceNumber?: string;
+  paymentStatusId: number;
+}
+
 async function createVoucher(
   voucherType: "payment" | "receive",
-  body: any,
+  body: CreateVoucherBody,
   userId: number,
 ) {
   const {
@@ -85,31 +100,37 @@ async function createVoucher(
   let versionId!: number;
 
   await db.transaction(async (tx) => {
-    const [expResult] = await tx.insert(expenses).values({
-      projectId: Number(projectId),
-      vendorId: Number(vendorId),
-      voucherType,
-      createdBy: userId,
-    });
-    expenseId = Number((expResult as any).insertId);
+    const [expInserted] = await tx
+      .insert(expenses)
+      .values({
+        projectId: Number(projectId),
+        vendorId: Number(vendorId),
+        voucherType,
+        createdBy: userId,
+      })
+      .$returningId();
+    expenseId = expInserted.id;
 
-    const [verResult] = await tx.insert(expenseVersions).values({
-      expenseId,
-      versionNo: 1,
-      voucherNumber,
-      expenseDate,
-      particularId: Number(particularId),
-      description: description ?? null,
-      transactionDetails: transactionDetails ?? null,
-      uomId: Number(uomId),
-      quantity: String(quantity),
-      pricePerUnit: String(pricePerUnit),
-      amount,
-      invoiceNumber: invoiceNumber ?? null,
-      paymentStatusId: Number(paymentStatusId),
-      createdBy: userId,
-    });
-    versionId = Number((verResult as any).insertId);
+    const [verInserted] = await tx
+      .insert(expenseVersions)
+      .values({
+        expenseId,
+        versionNo: 1,
+        voucherNumber,
+        expenseDate,
+        particularId: Number(particularId),
+        description: description ?? null,
+        transactionDetails: transactionDetails ?? null,
+        uomId: Number(uomId),
+        quantity: String(quantity),
+        pricePerUnit: String(pricePerUnit),
+        amount,
+        invoiceNumber: invoiceNumber ?? null,
+        paymentStatusId: Number(paymentStatusId),
+        createdBy: userId,
+      })
+      .$returningId();
+    versionId = verInserted.id;
 
     await tx
       .update(expenses)
@@ -120,27 +141,90 @@ async function createVoucher(
   return { expenseId, versionId, voucherNumber };
 }
 
-router.post("/vouchers/payment", requireRole("expense_entry"), async (req, res) => {
-  const required = ["projectId", "vendorId", "expenseDate", "particularId", "uomId", "quantity", "pricePerUnit", "paymentStatusId"];
-  const missing = required.filter((k) => req.body[k] == null);
-  if (missing.length) { res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` }); return; }
+const REQUIRED_VOUCHER_FIELDS = [
+  "projectId",
+  "vendorId",
+  "expenseDate",
+  "particularId",
+  "uomId",
+  "quantity",
+  "pricePerUnit",
+  "paymentStatusId",
+] as const;
 
-  const result = await createVoucher("payment", req.body, res.locals.user.id);
-  await writeAudit({ entityType: "expense", entityId: result.expenseId, action: "create_payment_voucher", newValue: req.body, userId: res.locals.user.id });
+router.post("/vouchers/payment", requireRole("expense_entry"), async (req, res) => {
+  const body = req.body as Partial<CreateVoucherBody>;
+  const missing = REQUIRED_VOUCHER_FIELDS.filter((k) => body[k] == null);
+  if (missing.length) {
+    res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` });
+    return;
+  }
+
+  const result = await createVoucher("payment", body as CreateVoucherBody, res.locals.user.id);
+  await writeAudit({
+    entityType: "expense",
+    entityId: result.expenseId,
+    action: "create_payment_voucher",
+    newValue: req.body,
+    userId: res.locals.user.id,
+  });
   const detail = await getVoucherDetail(result.expenseId);
   res.status(201).json({ data: detail });
 });
 
 router.post("/vouchers/receive", requireRole("expense_entry"), async (req, res) => {
-  const required = ["projectId", "vendorId", "expenseDate", "particularId", "uomId", "quantity", "pricePerUnit", "paymentStatusId"];
-  const missing = required.filter((k) => req.body[k] == null);
-  if (missing.length) { res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` }); return; }
+  const body = req.body as Partial<CreateVoucherBody>;
+  const missing = REQUIRED_VOUCHER_FIELDS.filter((k) => body[k] == null);
+  if (missing.length) {
+    res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` });
+    return;
+  }
 
-  const result = await createVoucher("receive", req.body, res.locals.user.id);
-  await writeAudit({ entityType: "expense", entityId: result.expenseId, action: "create_receive_voucher", newValue: req.body, userId: res.locals.user.id });
+  const result = await createVoucher("receive", body as CreateVoucherBody, res.locals.user.id);
+  await writeAudit({
+    entityType: "expense",
+    entityId: result.expenseId,
+    action: "create_receive_voucher",
+    newValue: req.body,
+    userId: res.locals.user.id,
+  });
   const detail = await getVoucherDetail(result.expenseId);
   res.status(201).json({ data: detail });
 });
 
-export { getVoucherDetail };
+router.patch("/expenses/:id/approve", requireRole("accounts"), async (req, res) => {
+  const expenseId = Number(req.params.id);
+  const userId = res.locals.user.id;
+
+  const [existing] = await db
+    .select()
+    .from(expenses)
+    .where(eq(expenses.id, expenseId))
+    .limit(1);
+
+  if (!existing || existing.deletedAt !== null) {
+    res.status(404).json({ error: "Expense not found" });
+    return;
+  }
+  if (existing.approvedAt !== null) {
+    res.status(409).json({ error: "Expense is already approved" });
+    return;
+  }
+
+  await db
+    .update(expenses)
+    .set({ approvedBy: userId, approvedAt: new Date() })
+    .where(eq(expenses.id, expenseId));
+
+  await writeAudit({
+    entityType: "expense",
+    entityId: expenseId,
+    action: "approve",
+    userId,
+  });
+
+  const detail = await getVoucherDetail(expenseId);
+  res.json({ data: detail });
+});
+
 export default router;

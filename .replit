@@ -29,3 +29,10 @@ externalPort = 8081
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+MYSQL_DATABASE_URL = "mysql://parbaf73_et_root:Seltos%407200!@216.10.252.56:3306/parbaf73_expense_tracker"
+JWT_SECRET = "1591a562e7aad8750d5d50961eb611b3e0d81d4aad1de3eab7fff198a9f144db2ef77c40b725eef9c1404443516c7fc0"
+FRONTEND_ORIGIN = "https://parbatienterprises.com"

@@ -31,6 +31,7 @@ import type {
   HealthStatus,
   IdResponse,
   ListDocuments200,
+  ListExpenseDocuments200,
   ListExpensesParams,
   ListParticularsParams,
   ListPaymentStatusesParams,
@@ -51,6 +52,8 @@ import type {
   UpdateUserRequest,
   UploadDocuments201,
   UploadDocumentsBody,
+  UploadExpenseDocuments201,
+  UploadExpenseDocumentsBody,
   VendorCreateRequest,
   VendorListResponse,
   VendorVouchersResponse,
@@ -3427,6 +3430,191 @@ export function useGetExpenseHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List documents for the expense's current version
+ */
+export const getListExpenseDocumentsUrl = (id: number) => {
+  return `/api/expenses/${id}/documents`;
+};
+
+export const listExpenseDocuments = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ListExpenseDocuments200> => {
+  return customFetch<ListExpenseDocuments200>(getListExpenseDocumentsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListExpenseDocumentsQueryKey = (id: number) => {
+  return [`/api/expenses/${id}/documents`] as const;
+};
+
+export const getListExpenseDocumentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listExpenseDocuments>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExpenseDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListExpenseDocumentsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listExpenseDocuments>>
+  > = ({ signal }) => listExpenseDocuments(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listExpenseDocuments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListExpenseDocumentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listExpenseDocuments>>
+>;
+export type ListExpenseDocumentsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List documents for the expense's current version
+ */
+
+export function useListExpenseDocuments<
+  TData = Awaited<ReturnType<typeof listExpenseDocuments>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExpenseDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListExpenseDocumentsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Upload documents to the expense's current version (expense_entry+)
+ */
+export const getUploadExpenseDocumentsUrl = (id: number) => {
+  return `/api/expenses/${id}/documents`;
+};
+
+export const uploadExpenseDocuments = async (
+  id: number,
+  uploadExpenseDocumentsBody: UploadExpenseDocumentsBody,
+  options?: RequestInit,
+): Promise<UploadExpenseDocuments201> => {
+  const formData = new FormData();
+  if (uploadExpenseDocumentsBody.files !== undefined) {
+    uploadExpenseDocumentsBody.files.forEach((value) =>
+      formData.append(`files`, value),
+    );
+  }
+
+  return customFetch<UploadExpenseDocuments201>(
+    getUploadExpenseDocumentsUrl(id),
+    {
+      ...options,
+      method: "POST",
+      body: formData,
+    },
+  );
+};
+
+export const getUploadExpenseDocumentsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadExpenseDocuments>>,
+    TError,
+    { id: number; data: BodyType<UploadExpenseDocumentsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadExpenseDocuments>>,
+  TError,
+  { id: number; data: BodyType<UploadExpenseDocumentsBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadExpenseDocuments"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadExpenseDocuments>>,
+    { id: number; data: BodyType<UploadExpenseDocumentsBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return uploadExpenseDocuments(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadExpenseDocumentsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadExpenseDocuments>>
+>;
+export type UploadExpenseDocumentsMutationBody =
+  BodyType<UploadExpenseDocumentsBody>;
+export type UploadExpenseDocumentsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Upload documents to the expense's current version (expense_entry+)
+ */
+export const useUploadExpenseDocuments = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadExpenseDocuments>>,
+    TError,
+    { id: number; data: BodyType<UploadExpenseDocumentsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadExpenseDocuments>>,
+  TError,
+  { id: number; data: BodyType<UploadExpenseDocumentsBody> },
+  TContext
+> => {
+  return useMutation(getUploadExpenseDocumentsMutationOptions(options));
+};
 
 /**
  * @summary List documents for an expense version

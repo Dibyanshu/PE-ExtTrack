@@ -821,6 +821,41 @@ export const GetExpenseHistoryResponse = zod.object({
 });
 
 /**
+ * @summary List documents for the expense's current version
+ */
+export const ListExpenseDocumentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListExpenseDocumentsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      expenseVersionId: zod.number(),
+      voucherNumber: zod.string(),
+      originalName: zod.string(),
+      storedName: zod.string(),
+      mimeType: zod.string().nullish(),
+      fileSize: zod.number(),
+      publicUrl: zod.string().nullish(),
+      fileOrder: zod.number(),
+      createdAt: zod.coerce.date().optional(),
+    }),
+  ),
+});
+
+/**
+ * @summary Upload documents to the expense's current version (expense_entry+)
+ */
+export const UploadExpenseDocumentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UploadExpenseDocumentsBody = zod.object({
+  files: zod.array(zod.instanceof(File)).optional(),
+});
+
+/**
  * @summary List documents for an expense version
  */
 export const ListDocumentsParams = zod.object({

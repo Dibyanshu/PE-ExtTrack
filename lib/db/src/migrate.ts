@@ -1,7 +1,8 @@
 import mysql from "mysql2/promise";
 
-const url = process.env.MYSQL_DATABASE_URL;
-if (!url) throw new Error("MYSQL_DATABASE_URL required");
+const rawUrl = process.env.DATABASE_URL ?? "";
+const url = rawUrl.startsWith("mysql://") || rawUrl.startsWith("mysql2://") ? rawUrl : process.env.MYSQL_DATABASE_URL;
+if (!url) throw new Error("A MySQL DATABASE_URL (or MYSQL_DATABASE_URL) must be set.");
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS users (

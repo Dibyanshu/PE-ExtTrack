@@ -481,6 +481,18 @@ export type GetExpenseHistory200 = {
   data: ExpenseVersion[];
 };
 
+export type ListExpenseDocuments200 = {
+  data: Document[];
+};
+
+export type UploadExpenseDocumentsBody = {
+  files?: Blob[];
+};
+
+export type UploadExpenseDocuments201 = {
+  data: UploadedFile[];
+};
+
 export type ListDocuments200 = {
   data: Document[];
 };

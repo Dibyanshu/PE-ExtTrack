@@ -3,6 +3,9 @@ import mysql from "mysql2/promise";
 const url = process.env.MYSQL_DATABASE_URL;
 if (!url) throw new Error("MYSQL_DATABASE_URL required");
 
+interface UserRow { name: string; email: string; role: string; can_view_history: number }
+interface VoucherSeqRow { id: number; prefix: string; current_value: number }
+
 async function run() {
   const conn = await mysql.createConnection({ uri: url! });
 
@@ -30,7 +33,6 @@ async function run() {
     console.log(`✓ ${email} → ${role}`);
   }
 
-  // Seed voucher sequences if missing
   await conn.execute(
     "INSERT IGNORE INTO voucher_sequence (id, prefix, current_value) VALUES (1, 'PECRU-PV', 0), (2, 'PECRU-RV', 0)",
   );
@@ -38,9 +40,9 @@ async function run() {
 
   const [rows] = await conn.execute(
     "SELECT name, email, role, can_view_history FROM users ORDER BY id",
-  ) as any[];
+  ) as [UserRow[], unknown];
   console.log("\nFinal user list:");
-  for (const row of rows as any[]) {
+  for (const row of rows) {
     console.log(`  ${row.name} <${row.email}> [${row.role}] history=${row.can_view_history}`);
   }
 

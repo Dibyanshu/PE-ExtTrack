@@ -3,19 +3,21 @@ import mysql from "mysql2/promise";
 const url = process.env.MYSQL_DATABASE_URL;
 if (!url) throw new Error("MYSQL_DATABASE_URL required");
 
+interface TableRow { [key: string]: string }
+interface ColumnRow { Field: string; Type: string }
+interface MySQLError extends Error { code?: string }
+
 async function run() {
   const conn = await mysql.createConnection({ uri: url! });
 
-  // Show tables
-  const [tables] = await conn.execute("SHOW TABLES") as any;
-  console.log("Tables:", tables.map((r: any) => Object.values(r)[0]));
+  const [tables] = await conn.execute("SHOW TABLES") as [TableRow[], unknown];
+  console.log("Tables:", tables.map((r) => Object.values(r)[0]));
 
-  // Describe users
   try {
-    const [cols] = await conn.execute("DESCRIBE users") as any;
-    console.log("\nusers columns:", cols.map((c: any) => `${c.Field} ${c.Type}`));
+    const [cols] = await conn.execute("DESCRIBE users") as [ColumnRow[], unknown];
+    console.log("\nusers columns:", cols.map((c) => `${c.Field} ${c.Type}`));
 
-    const colNames = cols.map((c: any) => c.Field as string);
+    const colNames = cols.map((c) => c.Field);
 
     if (!colNames.includes("role")) {
       console.log("Adding role column...");
@@ -37,15 +39,15 @@ async function run() {
       await conn.execute(`ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NOT NULL DEFAULT ''`);
       console.log("✓ password_hash added");
     }
-  } catch (e: any) {
-    console.log("users table check error:", e.message);
+  } catch (e) {
+    const err = e as MySQLError;
+    console.log("users table check error:", err.message);
   }
 
-  // Check expenses table for vendor_id and voucher_type
   try {
-    const [cols] = await conn.execute("DESCRIBE expenses") as any;
-    console.log("\nexpenses columns:", cols.map((c: any) => `${c.Field} ${c.Type}`));
-    const colNames = cols.map((c: any) => c.Field as string);
+    const [cols] = await conn.execute("DESCRIBE expenses") as [ColumnRow[], unknown];
+    console.log("\nexpenses columns:", cols.map((c) => `${c.Field} ${c.Type}`));
+    const colNames = cols.map((c) => c.Field);
 
     if (!colNames.includes("vendor_id")) {
       await conn.execute(`ALTER TABLE expenses ADD COLUMN vendor_id BIGINT UNSIGNED NOT NULL DEFAULT 1 AFTER project_id`);
@@ -55,8 +57,9 @@ async function run() {
       await conn.execute(`ALTER TABLE expenses ADD COLUMN voucher_type ENUM('payment','receive') NOT NULL DEFAULT 'payment' AFTER vendor_id`);
       console.log("✓ voucher_type added to expenses");
     }
-  } catch (e: any) {
-    console.log("expenses check:", e.message);
+  } catch (e) {
+    const err = e as MySQLError;
+    console.log("expenses check:", err.message);
   }
 
   await conn.end();

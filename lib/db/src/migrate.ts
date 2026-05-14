@@ -158,11 +158,12 @@ async function migrate() {
       await conn.execute(stmt);
       const firstLine = stmt.split("\n")[0].slice(0, 60);
       console.log("✓", firstLine);
-    } catch (err: any) {
-      if (err.code === "ER_DUP_KEYNAME" || err.code === "ER_FK_DUP_NAME" || err.errno === 1826 || err.message?.includes("Duplicate key name") || err.message?.includes("already exists")) {
+    } catch (err) {
+      const e = err as NodeJS.ErrnoException & { code?: string; errno?: number; sqlMessage?: string };
+      if (e.code === "ER_DUP_KEYNAME" || e.code === "ER_FK_DUP_NAME" || e.errno === 1826 || e.message?.includes("Duplicate key name") || e.message?.includes("already exists")) {
         console.log("~ skipped (already exists):", stmt.split("\n")[0].slice(0, 60));
       } else {
-        console.error("✗ Error:", err.message, "\n  on:", stmt.split("\n")[0]);
+        console.error("✗ Error:", e.message, "\n  on:", stmt.split("\n")[0]);
       }
     }
   }

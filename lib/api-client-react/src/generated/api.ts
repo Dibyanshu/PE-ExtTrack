@@ -53,8 +53,8 @@ import type {
   UploadDocumentsBody,
   VendorCreateRequest,
   VendorListResponse,
+  VendorVouchersResponse,
   VoucherDetailResponse,
-  VoucherListResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -2559,11 +2559,14 @@ export const getVendorVouchers = async (
   id: number,
   params?: GetVendorVouchersParams,
   options?: RequestInit,
-): Promise<VoucherListResponse> => {
-  return customFetch<VoucherListResponse>(getGetVendorVouchersUrl(id, params), {
-    ...options,
-    method: "GET",
-  });
+): Promise<VendorVouchersResponse> => {
+  return customFetch<VendorVouchersResponse>(
+    getGetVendorVouchersUrl(id, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetVendorVouchersQueryKey = (

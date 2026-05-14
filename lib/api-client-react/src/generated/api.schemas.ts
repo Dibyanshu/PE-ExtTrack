@@ -351,13 +351,42 @@ export interface TypeSummary {
   count: number;
 }
 
+export type RecentVoucherItemVoucherType =
+  (typeof RecentVoucherItemVoucherType)[keyof typeof RecentVoucherItemVoucherType];
+
+export const RecentVoucherItemVoucherType = {
+  payment: "payment",
+  receive: "receive",
+} as const;
+
+export interface RecentVoucherItem {
+  expenseId: number;
+  voucherType: RecentVoucherItemVoucherType;
+  voucherNumber: string;
+  expenseDate: string;
+  projectName: string;
+  vendorName: string;
+  amount: string;
+  paymentStatusName: string;
+}
+
 export interface DashboardSummary {
   totalAmount: string;
   totalCount: number;
   byProject: ProjectSummary[];
   byStatus: StatusSummary[];
   byType: TypeSummary[];
-  recentVouchers: VoucherDetail[];
+  recentVouchers: RecentVoucherItem[];
+}
+
+export type DashboardSummaryResponse = DashboardSummary;
+
+export interface VendorVouchersResponse {
+  vendor: Vendor;
+  data: ExpenseListItem[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export type GetMe200 = {

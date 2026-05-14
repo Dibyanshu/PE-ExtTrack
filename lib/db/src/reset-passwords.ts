@@ -4,6 +4,8 @@ import mysql from "mysql2/promise";
 const url = process.env.MYSQL_DATABASE_URL;
 if (!url) throw new Error("MYSQL_DATABASE_URL required");
 
+interface UserRow { name: string; email: string; role: string }
+
 async function run() {
   const hash = await bcrypt.hash("Parbati@123", 12);
   console.log("Generated hash:", hash);
@@ -13,9 +15,9 @@ async function run() {
 
   const [rows] = await conn.execute(
     "SELECT name, email, role FROM users ORDER BY id",
-  ) as any[];
+  ) as [UserRow[], unknown];
   console.log("Users in DB:");
-  for (const row of rows as any[]) {
+  for (const row of rows) {
     console.log(" -", row.name, `<${row.email}>`, `[${row.role}]`);
   }
   await conn.end();

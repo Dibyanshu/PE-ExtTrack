@@ -738,11 +738,11 @@ paths:
             default: 20
       responses:
         "200":
-          description: Vouchers for vendor
+          description: Vouchers for vendor with vendor metadata
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VoucherListResponse"
+                $ref: "#/components/schemas/VendorVouchersResponse"
 
   /vouchers/payment:
     post:
@@ -1115,7 +1115,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DashboardSummary"
+                $ref: "#/components/schemas/DashboardSummaryResponse"
 
 components:
   securitySchemes:
@@ -1771,6 +1771,37 @@ components:
           type: integer
       required: [voucherType, totalAmount, count]
 
+    RecentVoucherItem:
+      type: object
+      properties:
+        expenseId:
+          type: integer
+        voucherType:
+          type: string
+          enum: [payment, receive]
+        voucherNumber:
+          type: string
+        expenseDate:
+          type: string
+          format: date
+        projectName:
+          type: string
+        vendorName:
+          type: string
+        amount:
+          type: string
+        paymentStatusName:
+          type: string
+      required:
+        - expenseId
+        - voucherType
+        - voucherNumber
+        - expenseDate
+        - projectName
+        - vendorName
+        - amount
+        - paymentStatusName
+
     DashboardSummary:
       type: object
       properties:
@@ -1793,5 +1824,25 @@ components:
         recentVouchers:
           type: array
           items:
-            $ref: "#/components/schemas/VoucherDetail"
+            $ref: "#/components/schemas/RecentVoucherItem"
       required: [totalAmount, totalCount, byProject, byStatus, byType, recentVouchers]
+
+    DashboardSummaryResponse:
+      $ref: "#/components/schemas/DashboardSummary"
+
+    VendorVouchersResponse:
+      type: object
+      properties:
+        vendor:
+          $ref: "#/components/schemas/Vendor"
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpenseListItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [vendor, data, total, page, limit]

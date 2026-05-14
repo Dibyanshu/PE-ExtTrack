@@ -3,22 +3,22 @@ import mysql from "mysql2/promise";
 const url = process.env.MYSQL_DATABASE_URL;
 if (!url) throw new Error("MYSQL_DATABASE_URL required");
 
+interface VoucherSeqRow { id: number; prefix: string; current_value: number }
+interface ColumnRow { Field: string; Type: string }
+
 async function run() {
   const conn = await mysql.createConnection({ uri: url! });
 
-  // Show current voucher_sequence state
-  const [rows] = await conn.execute("SELECT * FROM voucher_sequence") as any[];
+  const [rows] = await conn.execute("SELECT * FROM voucher_sequence") as [VoucherSeqRow[], unknown];
   console.log("Current voucher_sequence:", rows);
 
-  // Show columns of expense_versions
-  const [cols] = await conn.execute("DESCRIBE expense_versions") as any[];
-  console.log("expense_versions columns:", cols.map((c: any) => `${c.Field}(${c.Type})`).join(", "));
+  const [cols] = await conn.execute("DESCRIBE expense_versions") as [ColumnRow[], unknown];
+  console.log("expense_versions columns:", cols.map((c) => `${c.Field}(${c.Type})`).join(", "));
 
-  // Update prefixes to include the type suffix
   await conn.execute("UPDATE voucher_sequence SET prefix = 'PECRU-PV' WHERE id = 1 AND prefix != 'PECRU-PV'");
   await conn.execute("UPDATE voucher_sequence SET prefix = 'PECRU-RV' WHERE id = 2 AND prefix != 'PECRU-RV'");
 
-  const [updated] = await conn.execute("SELECT * FROM voucher_sequence") as any[];
+  const [updated] = await conn.execute("SELECT * FROM voucher_sequence") as [VoucherSeqRow[], unknown];
   console.log("Updated voucher_sequence:", updated);
 
   await conn.end();

@@ -14,7 +14,7 @@ Full-stack expense-tracking system for a copper-production company. Supports Pay
 
 | Variable | Description |
 |---|---|
-| `MYSQL_DATABASE_URL` | MySQL connection string (e.g. `mysql://user:pass@host:3306/dbname`) |
+| `DATABASE_URL` | MySQL connection string (e.g. `mysql://user:pass@host:3306/dbname`) |
 | `JWT_SECRET` | Secret key for signing JWTs (set a strong random string in production) |
 
 ## Stack
@@ -44,15 +44,15 @@ Full-stack expense-tracking system for a copper-production company. Supports Pay
 - **Voucher sequences**: Two rows in `voucher_sequence` table (id=1 for PECRU-PV, id=2 for PECRU-RV). Numbers are generated atomically via `UPDATE ... SET current_value = current_value + 1` then `SELECT`.
 - **Versioned edits**: Every edit to an expense creates a new row in `expense_versions` (immutable audit trail). The `expenses.current_version_id` pointer advances.
 - **RBAC rank**: `expense_entry(1) < accounts(2) < admin(3) < superadmin(4)` — enforced in `requireRole(minRole)` middleware.
-- **MySQL DATE columns**: `gte`/`lte` filters expect JS `Date` objects; convert string query params with `new Date(param)` before passing to Drizzle.
-- **Separate env var**: `MYSQL_DATABASE_URL` is used (not `DATABASE_URL`) to avoid conflict with the existing Postgres secret used by other Replit infrastructure.
+- **MySQL DATE columns**: `gte`/`lte` filters on `expenseDate` use ISO date strings directly (column is `mode:"string"` in Drizzle).
+- **Dedicated connections for inserts**: Voucher creation and expense version inserts use `pool.getConnection()` directly (not Drizzle transactions) to guarantee `LAST_INSERT_ID()` isolation across pooled connections.
 
 ## Roles
 
 | Role | Can do |
 |---|---|
 | `expense_entry` | Create/update vouchers, upload documents |
-| `accounts` | All of above + vendor voucher lookup |
+| `accounts` | All of above + vendor voucher lookup, approve/finalize expenses |
 | `admin` | All of above + manage users, masters, vendors, delete expenses |
 | `superadmin` | All admin actions |
 
@@ -77,4 +77,4 @@ Full-stack expense-tracking system for a copper-production company. Supports Pay
 - Run `pnpm --filter @workspace/api-spec run codegen` after any change to `openapi.yaml`
 - Run `pnpm --filter @workspace/db run push` after any schema change, before seeding
 - The seed script uses `INSERT IGNORE` — safe to re-run
-- `JWT_SECRET` falls back to `'dev-secret-change-in-production'` if not set — always set it in production
+- `JWT_SECRET` is required at startup — server throws immediately if not set

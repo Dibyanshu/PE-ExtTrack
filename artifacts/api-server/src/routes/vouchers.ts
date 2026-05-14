@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   db,
+  pool,
   expenses,
   expenseVersions,
   particularsMaster,
@@ -9,7 +10,7 @@ import {
   projectMaster,
   vendorMaster,
 } from "@workspace/db";
-import { eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth";
 import { nextVoucherNumber } from "../lib/voucher";
 import { writeAudit } from "../lib/audit";
@@ -74,82 +75,77 @@ interface CreateVoucherBody {
   paymentStatusId: number;
 }
 
+/**
+ * Creates a new voucher (expense + first version) using a dedicated DB connection
+ * so LAST_INSERT_ID() is never contaminated by other queries on the same connection.
+ */
 async function createVoucher(
   voucherType: "payment" | "receive",
   body: CreateVoucherBody,
   userId: number,
-) {
+): Promise<{ expenseId: number; versionId: number; voucherNumber: string }> {
   const {
-    projectId,
-    vendorId,
-    expenseDate,
-    particularId,
-    description,
-    transactionDetails,
-    uomId,
-    quantity,
-    pricePerUnit,
-    invoiceNumber,
-    paymentStatusId,
+    projectId, vendorId, expenseDate, particularId,
+    description, transactionDetails, uomId,
+    quantity, pricePerUnit, invoiceNumber, paymentStatusId,
   } = body;
 
   const amount = (Number(quantity) * Number(pricePerUnit)).toFixed(2);
+  // Generate voucher number on its own dedicated connection before main transaction
   const voucherNumber = await nextVoucherNumber(voucherType);
 
-  let expenseId!: number;
-  let versionId!: number;
+  // Use a dedicated connection for the insert so LAST_INSERT_ID() is never shared
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
 
-  await db.transaction(async (tx) => {
-    const [expInserted] = await tx
-      .insert(expenses)
-      .values({
-        projectId: Number(projectId),
-        vendorId: Number(vendorId),
-        voucherType,
-        createdBy: userId,
-      })
-      .$returningId();
-    expenseId = expInserted.id;
+    // 1. Insert expense
+    const [expResult] = await conn.execute(
+      `INSERT INTO expenses (project_id, vendor_id, voucher_type, created_by)
+       VALUES (?, ?, ?, ?)`,
+      [Number(projectId), Number(vendorId), voucherType, userId],
+    ) as [{ insertId: number }, unknown];
+    const expenseId = expResult.insertId;
 
-    const [verInserted] = await tx
-      .insert(expenseVersions)
-      .values({
-        expenseId,
-        versionNo: 1,
-        voucherNumber,
-        expenseDate,
-        particularId: Number(particularId),
-        description: description ?? null,
-        transactionDetails: transactionDetails ?? null,
-        uomId: Number(uomId),
-        quantity: String(quantity),
-        pricePerUnit: String(pricePerUnit),
-        amount,
-        invoiceNumber: invoiceNumber ?? null,
-        paymentStatusId: Number(paymentStatusId),
-        createdBy: userId,
-      })
-      .$returningId();
-    versionId = verInserted.id;
+    // 2. Insert expense_version
+    const [verResult] = await conn.execute(
+      `INSERT INTO expense_versions
+         (expense_id, version_no, voucher_number, expense_date, particular_id,
+          description, transaction_details, uom_id, quantity, price_per_unit,
+          amount, invoice_number, payment_status_id, created_by)
+       VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        expenseId, voucherNumber, expenseDate,
+        Number(particularId),
+        description ?? null,
+        transactionDetails ?? null,
+        Number(uomId),
+        String(quantity), String(pricePerUnit), amount,
+        invoiceNumber ?? null,
+        Number(paymentStatusId), userId,
+      ],
+    ) as [{ insertId: number }, unknown];
+    const versionId = verResult.insertId;
 
-    await tx
-      .update(expenses)
-      .set({ currentVersionId: versionId })
-      .where(eq(expenses.id, expenseId));
-  });
+    // 3. Point expense at its current version
+    await conn.execute(
+      "UPDATE expenses SET current_version_id = ? WHERE id = ?",
+      [versionId, expenseId],
+    );
 
-  return { expenseId, versionId, voucherNumber };
+    await conn.commit();
+    return { expenseId, versionId, voucherNumber };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 const REQUIRED_VOUCHER_FIELDS = [
-  "projectId",
-  "vendorId",
-  "expenseDate",
-  "particularId",
-  "uomId",
-  "quantity",
-  "pricePerUnit",
-  "paymentStatusId",
+  "projectId", "vendorId", "expenseDate", "particularId",
+  "uomId", "quantity", "pricePerUnit", "paymentStatusId",
 ] as const;
 
 router.post("/vouchers/payment", requireRole("expense_entry"), async (req, res) => {
@@ -159,14 +155,10 @@ router.post("/vouchers/payment", requireRole("expense_entry"), async (req, res) 
     res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` });
     return;
   }
-
   const result = await createVoucher("payment", body as CreateVoucherBody, res.locals.user.id);
   await writeAudit({
-    entityType: "expense",
-    entityId: result.expenseId,
-    action: "create_payment_voucher",
-    newValue: req.body,
-    userId: res.locals.user.id,
+    entityType: "expense", entityId: result.expenseId,
+    action: "create_payment_voucher", newValue: req.body, userId: res.locals.user.id,
   });
   const detail = await getVoucherDetail(result.expenseId);
   res.status(201).json({ data: detail });
@@ -179,14 +171,10 @@ router.post("/vouchers/receive", requireRole("expense_entry"), async (req, res) 
     res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` });
     return;
   }
-
   const result = await createVoucher("receive", body as CreateVoucherBody, res.locals.user.id);
   await writeAudit({
-    entityType: "expense",
-    entityId: result.expenseId,
-    action: "create_receive_voucher",
-    newValue: req.body,
-    userId: res.locals.user.id,
+    entityType: "expense", entityId: result.expenseId,
+    action: "create_receive_voucher", newValue: req.body, userId: res.locals.user.id,
   });
   const detail = await getVoucherDetail(result.expenseId);
   res.status(201).json({ data: detail });
@@ -216,12 +204,7 @@ router.patch("/expenses/:id/approve", requireRole("accounts"), async (req, res) 
     .set({ approvedBy: userId, approvedAt: new Date() })
     .where(eq(expenses.id, expenseId));
 
-  await writeAudit({
-    entityType: "expense",
-    entityId: expenseId,
-    action: "approve",
-    userId,
-  });
+  await writeAudit({ entityType: "expense", entityId: expenseId, action: "approve", userId });
 
   const detail = await getVoucherDetail(expenseId);
   res.json({ data: detail });

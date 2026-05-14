@@ -8,7 +8,7 @@ if (!process.env.MYSQL_DATABASE_URL) {
   );
 }
 
-const pool = mysql.createPool({
+export const pool = mysql.createPool({
   uri: process.env.MYSQL_DATABASE_URL,
   waitForConnections: true,
   connectionLimit: 10,

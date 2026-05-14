@@ -177,31 +177,33 @@ router.put("/expenses/:id", requireRole("expense_entry"), async (req, res) => {
   let newVersionId!: number;
 
   await db.transaction(async (tx) => {
-    const [verInserted] = await tx
-      .insert(expenseVersions)
-      .values({
-        expenseId,
-        versionNo: nextVersionNo,
-        voucherNumber: prevVersion!.voucherNumber,
-        expenseDate: expenseDate ?? prevVersion!.expenseDate,
-        particularId: particularId != null ? Number(particularId) : prevVersion!.particularId,
-        description: description ?? prevVersion?.description,
-        transactionDetails: transactionDetails ?? prevVersion?.transactionDetails,
-        uomId: uomId != null ? Number(uomId) : prevVersion!.uomId,
-        quantity: String(qty),
-        pricePerUnit: String(ppu),
-        amount,
-        invoiceNumber: invoiceNumber ?? prevVersion?.invoiceNumber,
-        paymentStatusId: paymentStatusId != null ? Number(paymentStatusId) : prevVersion!.paymentStatusId,
-        createdBy: userId,
-      })
-      .$returningId();
+    // Use raw SQL to avoid $returningId() LAST_INSERT_ID confusion inside transactions
+    await tx.execute(
+      sql`INSERT INTO expense_versions
+            (expense_id, version_no, voucher_number, expense_date, particular_id,
+             description, transaction_details, uom_id, quantity, price_per_unit,
+             amount, invoice_number, payment_status_id, created_by)
+          VALUES
+            (${expenseId}, ${nextVersionNo}, ${prevVersion!.voucherNumber},
+             ${expenseDate ?? prevVersion!.expenseDate},
+             ${particularId != null ? Number(particularId) : prevVersion!.particularId},
+             ${description ?? prevVersion?.description ?? null},
+             ${transactionDetails ?? prevVersion?.transactionDetails ?? null},
+             ${uomId != null ? Number(uomId) : prevVersion!.uomId},
+             ${String(qty)}, ${String(ppu)}, ${amount},
+             ${invoiceNumber ?? prevVersion?.invoiceNumber ?? null},
+             ${paymentStatusId != null ? Number(paymentStatusId) : prevVersion!.paymentStatusId},
+             ${userId})`,
+    );
 
-    newVersionId = verInserted.id;
-    await tx
-      .update(expenses)
-      .set({ currentVersionId: newVersionId })
-      .where(eq(expenses.id, expenseId));
+    const vidResult = await tx.execute(
+      sql`SELECT LAST_INSERT_ID() AS lid`,
+    ) as unknown as [Array<{ lid: number }>, unknown];
+    newVersionId = Number(vidResult[0][0].lid);
+
+    await tx.execute(
+      sql`UPDATE expenses SET current_version_id = ${newVersionId} WHERE id = ${expenseId}`,
+    );
   });
 
   await writeAudit({

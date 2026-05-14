@@ -2,7 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wo
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import Forbidden from "@/pages/forbidden";
@@ -31,6 +31,7 @@ const queryClient = new QueryClient({
   },
 });
 
+setBaseUrl(import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000") : null);
 setAuthTokenGetter(() => localStorage.getItem("pe_token"));
 
 const ALL_ROLES = ["expense_entry", "accounts", "admin", "superadmin"];

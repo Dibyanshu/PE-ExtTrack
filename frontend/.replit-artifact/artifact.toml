@@ -2,7 +2,7 @@ kind = "web"
 previewPath = "/"
 title = "Parbati Enterprises Expense Tracker"
 version = "1.0.0"
-id = "artifacts/expense-tracker"
+id = "frontend"
 router = "path"
 
 [[integratedSkills]]
@@ -19,7 +19,7 @@ run = "pnpm --filter @workspace/expense-tracker run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/expense-tracker", "run", "build" ]
-publicDir = "artifacts/expense-tracker/dist/public"
+publicDir = "frontend/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]

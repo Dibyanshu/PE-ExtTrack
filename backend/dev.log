@@ -1,0 +1,53 @@
+
+> backend@1.0.0 dev
+> node --watch app.js
+
+◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+{"level":30,"time":1777999549193,"pid":8920,"hostname":"ESSPLLAP213","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1777999549194,"pid":8920,"hostname":"ESSPLLAP213","msg":"Server listening at http://192.168.1.11:4000"}
+{"level":30,"time":1777999549194,"pid":8920,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.18.80.1:4000"}
+{"level":30,"time":1777999549194,"pid":8920,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.31.96.1:4000"}
+{"level":30,"time":1777999560667,"pid":8920,"hostname":"ESSPLLAP213","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":52010},"msg":"incoming request"}
+{"level":30,"time":1777999560676,"pid":8920,"hostname":"ESSPLLAP213","reqId":"req-1","res":{"statusCode":200},"responseTime":7.575699999928474,"msg":"request completed"}
+Restarting 'app.js'
+◇ injected env (10) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+{"level":30,"time":1778004605167,"pid":20236,"hostname":"ESSPLLAP213","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1778004605168,"pid":20236,"hostname":"ESSPLLAP213","msg":"Server listening at http://192.168.1.11:4000"}
+{"level":30,"time":1778004605168,"pid":20236,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.18.80.1:4000"}
+{"level":30,"time":1778004605168,"pid":20236,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.31.96.1:4000"}
+Restarting 'app.js'
+◇ injected env (10) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+{"level":30,"time":1778004606255,"pid":2404,"hostname":"ESSPLLAP213","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1778004606256,"pid":2404,"hostname":"ESSPLLAP213","msg":"Server listening at http://192.168.1.11:4000"}
+{"level":30,"time":1778004606256,"pid":2404,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.18.80.1:4000"}
+{"level":30,"time":1778004606256,"pid":2404,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.31.96.1:4000"}
+Restarting 'app.js'
+◇ injected env (10) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+{"level":30,"time":1778010731846,"pid":17608,"hostname":"ESSPLLAP213","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1778010731847,"pid":17608,"hostname":"ESSPLLAP213","msg":"Server listening at http://192.168.1.11:4000"}
+{"level":30,"time":1778010731847,"pid":17608,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.18.80.1:4000"}
+{"level":30,"time":1778010731847,"pid":17608,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.31.96.1:4000"}
+Restarting 'app.js'
+◇ injected env (10) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+{"level":30,"time":1778010732914,"pid":5552,"hostname":"ESSPLLAP213","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1778010732915,"pid":5552,"hostname":"ESSPLLAP213","msg":"Server listening at http://192.168.1.11:4000"}
+{"level":30,"time":1778010732915,"pid":5552,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.18.80.1:4000"}
+{"level":30,"time":1778010732916,"pid":5552,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.31.96.1:4000"}
+Restarting 'app.js'
+◇ injected env (10) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+{"level":30,"time":1778010759793,"pid":32604,"hostname":"ESSPLLAP213","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1778010759795,"pid":32604,"hostname":"ESSPLLAP213","msg":"Server listening at http://192.168.1.11:4000"}
+{"level":30,"time":1778010759795,"pid":32604,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.18.80.1:4000"}
+{"level":30,"time":1778010759795,"pid":32604,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.31.96.1:4000"}
+Restarting 'app.js'
+◇ injected env (10) from .env // tip: ⌘ override existing { override: true }
+{"level":30,"time":1778010768370,"pid":29744,"hostname":"ESSPLLAP213","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1778010768371,"pid":29744,"hostname":"ESSPLLAP213","msg":"Server listening at http://192.168.1.11:4000"}
+{"level":30,"time":1778010768371,"pid":29744,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.18.80.1:4000"}
+{"level":30,"time":1778010768371,"pid":29744,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.31.96.1:4000"}
+Restarting 'app.js'
+◇ injected env (10) from .env // tip: ⌘ override existing { override: true }
+{"level":30,"time":1778010826010,"pid":17340,"hostname":"ESSPLLAP213","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1778010826011,"pid":17340,"hostname":"ESSPLLAP213","msg":"Server listening at http://192.168.1.11:4000"}
+{"level":30,"time":1778010826011,"pid":17340,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.18.80.1:4000"}
+{"level":30,"time":1778010826011,"pid":17340,"hostname":"ESSPLLAP213","msg":"Server listening at http://172.31.96.1:4000"}

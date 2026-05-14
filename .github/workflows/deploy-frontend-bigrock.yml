@@ -1,0 +1,75 @@
+name: Deploy Frontend to BigRock FTP
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend-bigrock.yml'
+
+concurrency:
+  group: bigrock-frontend-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and FTP deploy frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER || vars.FTP_SERVER || 'ftp.parbatienterprises.com' }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_FRONTEND_DIR: ${{ secrets.FTP_FRONTEND_DIR || vars.FTP_FRONTEND_DIR || '/public_html/expense_tracker/' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || vars.VITE_API_URL }}
+        run: |
+          missing=0
+          for key in FTP_SERVER FTP_USERNAME FTP_PASSWORD FTP_FRONTEND_DIR VITE_API_URL; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing required GitHub secret: $key"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || vars.VITE_API_URL }}
+          VITE_BASE_PATH: /expense_tracker/
+        run: pnpm --filter @workspace/expense-tracker run build
+
+      - name: Deploy frontend to BigRock
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER || vars.FTP_SERVER || 'ftp.parbatienterprises.com' }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
+          port: ${{ secrets.FTP_PORT || 21 }}
+          local-dir: frontend/dist/
+          server-dir: ${{ secrets.FTP_FRONTEND_DIR || vars.FTP_FRONTEND_DIR || '/public_html/expense_tracker/' }}
+          exclude: |
+            **/.git*
+            **/.git*/**

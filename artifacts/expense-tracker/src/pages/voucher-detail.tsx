@@ -10,6 +10,11 @@ import {
   getGetExpenseHistoryQueryKey,
   getListExpensesQueryKey,
 } from "@workspace/api-client-react";
+import type {
+  ExpenseDetailResponseData,
+  Document as VoucherDocument,
+  UploadExpenseDocumentsBody,
+} from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { AlertCircle, ArrowLeft, CheckCircle, Lock, History, Upload, FileText } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle, Lock, History, Upload, FileText, Pencil } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function VoucherDetail() {
@@ -40,7 +45,7 @@ export default function VoucherDetail() {
   const finalizeMutation = useFinalizeExpense();
   const uploadMutation = useUploadExpenseDocuments();
 
-  const expense = expenseResp?.data;
+  const expense = expenseResp?.data as ExpenseDetailResponseData | undefined;
 
   const canApprove = ["accounts", "admin", "superadmin"].includes(role || "");
   const canFinalize = ["accounts", "admin", "superadmin"].includes(role || "");
@@ -69,9 +74,10 @@ export default function VoucherDetail() {
 
   function handleUpload() {
     if (!uploadFiles || !uploadFiles.length) return;
-    const formData = new FormData();
-    Array.from(uploadFiles).forEach(f => formData.append("files", f));
-    uploadMutation.mutate({ id, data: formData as any }, {
+    const body: UploadExpenseDocumentsBody = {
+      files: Array.from(uploadFiles) as Blob[],
+    };
+    uploadMutation.mutate({ id, data: body }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetExpenseQueryKey(id) });
         setUploadFiles(null);
@@ -122,6 +128,13 @@ export default function VoucherDetail() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {!expense.finalizedAt && (
+            <Link href={`/vouchers/${id}/edit`}>
+              <Button variant="outline" className="gap-2 font-bold uppercase tracking-wide" data-testid="btn-edit">
+                <Pencil className="w-4 h-4" /> Edit
+              </Button>
+            </Link>
+          )}
           {canApprove && !expense.approvedAt && !expense.finalizedAt && (
             <Button variant="outline" className="gap-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-white font-bold uppercase tracking-wide"
               onClick={handleApprove} disabled={approveMutation.isPending} data-testid="btn-approve">
@@ -175,7 +188,7 @@ export default function VoucherDetail() {
       {/* Status bar */}
       <div className="flex gap-3 flex-wrap">
         <Badge variant={expense.approvedAt ? "default" : "outline"} data-testid="status-approved">
-          {expense.approvedAt ? `Approved` : "Not Approved"}
+          {expense.approvedAt ? "Approved" : "Not Approved"}
         </Badge>
         <Badge variant={expense.finalizedAt ? "default" : "outline"} data-testid="status-finalized">
           {expense.finalizedAt ? "Finalized" : "Not Finalized"}
@@ -250,9 +263,9 @@ export default function VoucherDetail() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {(expense as any).documents?.length ? (
+          {expense.documents?.length ? (
             <div className="space-y-2">
-              {(expense as any).documents.map((doc: any) => (
+              {expense.documents.map((doc: VoucherDocument) => (
                 <div key={doc.id} className="flex items-center justify-between p-2 rounded border border-border bg-muted/20"
                   data-testid={`doc-${doc.id}`}>
                   <div className="flex items-center gap-2">

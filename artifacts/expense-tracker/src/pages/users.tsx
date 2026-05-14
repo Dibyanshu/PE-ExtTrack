@@ -9,7 +9,12 @@ import {
   useToggleUserActive,
   getListUsersQueryKey,
 } from "@workspace/api-client-react";
-import type { CreateUserRequestRole, UpdateUserRequestRole } from "@workspace/api-client-react";
+import type {
+  UserRecord,
+  ListUsers200,
+  CreateUserRequestRole,
+  UpdateUserRequestRole,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil } from "lucide-react";
 
 const ROLES = ["expense_entry", "accounts", "admin", "superadmin"] as const;
+type AppRole = typeof ROLES[number];
 
 const createSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -43,7 +49,7 @@ const editSchema = z.object({
 type CreateValues = z.infer<typeof createSchema>;
 type EditValues = z.infer<typeof editSchema>;
 
-const roleBadgeVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+const roleBadgeVariant: Record<AppRole, "default" | "secondary" | "outline" | "destructive"> = {
   superadmin: "destructive",
   admin: "default",
   accounts: "secondary",
@@ -52,7 +58,7 @@ const roleBadgeVariant: Record<string, "default" | "secondary" | "outline" | "de
 
 export default function Users() {
   const [addOpen, setAddOpen] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
+  const [editItem, setEditItem] = useState<UserRecord | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -72,9 +78,14 @@ export default function Users() {
     defaultValues: { name: "", email: "", role: "expense_entry", canViewHistory: false },
   });
 
-  function openEdit(u: any) {
+  function openEdit(u: UserRecord) {
     setEditItem(u);
-    editForm.reset({ name: u.name, email: u.email, role: u.role, canViewHistory: !!u.canViewHistory });
+    editForm.reset({
+      name: u.name,
+      email: u.email,
+      role: u.role as AppRole,
+      canViewHistory: !!u.canViewHistory,
+    });
   }
 
   function handleCreate(values: CreateValues) {
@@ -95,7 +106,10 @@ export default function Users() {
         addForm.reset();
         setSubmitting(false);
       },
-      onError: (e) => { toast({ title: "Error", description: e.message, variant: "destructive" }); setSubmitting(false); },
+      onError: (e) => {
+        toast({ title: "Error", description: e.message, variant: "destructive" });
+        setSubmitting(false);
+      },
     });
   }
 
@@ -117,7 +131,10 @@ export default function Users() {
         setEditItem(null);
         setSubmitting(false);
       },
-      onError: (e) => { toast({ title: "Error", description: e.message, variant: "destructive" }); setSubmitting(false); },
+      onError: (e) => {
+        toast({ title: "Error", description: e.message, variant: "destructive" });
+        setSubmitting(false);
+      },
     });
   }
 
@@ -131,7 +148,7 @@ export default function Users() {
     });
   }
 
-  const users = (usersResp as any)?.data || usersResp || [];
+  const users: UserRecord[] = (usersResp as ListUsers200 | undefined)?.data ?? [];
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -146,7 +163,7 @@ export default function Users() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6 space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
-          ) : !users?.length ? (
+          ) : !users.length ? (
             <div className="text-center py-16 text-muted-foreground">
               <p className="text-sm uppercase tracking-widest font-bold">No users found</p>
             </div>
@@ -163,12 +180,12 @@ export default function Users() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u: any) => (
+                {users.map((u: UserRecord) => (
                   <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors" data-testid={`row-user-${u.id}`}>
                     <td className="px-4 py-3 font-medium">{u.name}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs font-mono">{u.email}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={roleBadgeVariant[u.role] || "outline"} data-testid={`badge-role-${u.id}`}>
+                      <Badge variant={roleBadgeVariant[u.role as AppRole] ?? "outline"} data-testid={`badge-role-${u.id}`}>
                         {u.role}
                       </Badge>
                     </td>

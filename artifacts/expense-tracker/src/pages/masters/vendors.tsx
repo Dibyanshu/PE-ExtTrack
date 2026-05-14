@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -9,6 +9,7 @@ import {
   useToggleVendorActive,
   getListVendorsQueryKey,
 } from "@workspace/api-client-react";
+import type { Vendor } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,69 +31,16 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-export default function Vendors() {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [addOpen, setAddOpen] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+interface VendorFormProps {
+  form: UseFormReturn<FormValues>;
+  onSubmit: (v: FormValues) => void;
+  onCancel: () => void;
+  submitLabel: string;
+  submitting: boolean;
+}
 
-  const { data, isLoading } = useListVendors({ search: search || undefined, page, limit: PAGE_SIZE });
-  const create = useCreateVendor();
-  const update = useUpdateVendor();
-  const toggle = useToggleVendorActive();
-
-  const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE));
-
-  const addForm = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { name: "", contactPerson: "", phone: "", email: "", address: "" } });
-  const editForm = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { name: "", contactPerson: "", phone: "", email: "", address: "" } });
-
-  function openEdit(v: any) {
-    setEditItem(v);
-    editForm.reset({ name: v.name, contactPerson: v.contactPerson || "", phone: v.phone || "", email: v.email || "", address: v.address || "" });
-  }
-
-  function handleAdd(values: FormValues) {
-    setSubmitting(true);
-    create.mutate({ data: { name: values.name, ...(values.contactPerson ? { contactPerson: values.contactPerson } : {}), ...(values.phone ? { phone: values.phone } : {}), ...(values.email ? { email: values.email } : {}), ...(values.address ? { address: values.address } : {}) } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() });
-        toast({ title: "Vendor added" });
-        setAddOpen(false);
-        addForm.reset();
-        setSubmitting(false);
-      },
-      onError: (e) => { toast({ title: "Error", description: e.message, variant: "destructive" }); setSubmitting(false); },
-    });
-  }
-
-  function handleEdit(values: FormValues) {
-    if (!editItem) return;
-    setSubmitting(true);
-    update.mutate({ id: editItem.id, data: { name: values.name, ...(values.contactPerson ? { contactPerson: values.contactPerson } : {}), ...(values.phone ? { phone: values.phone } : {}), ...(values.email ? { email: values.email } : {}), ...(values.address ? { address: values.address } : {}) } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() });
-        toast({ title: "Vendor updated" });
-        setEditItem(null);
-        setSubmitting(false);
-      },
-      onError: (e) => { toast({ title: "Error", description: e.message, variant: "destructive" }); setSubmitting(false); },
-    });
-  }
-
-  function handleToggle(id: number) {
-    toggle.mutate({ id }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() });
-        toast({ title: "Status updated" });
-      },
-      onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-    });
-  }
-
-  const VendorForm = ({ form, onSubmit, onCancel, submitLabel }: { form: any; onSubmit: (v: FormValues) => void; onCancel: () => void; submitLabel: string }) => (
+function VendorForm({ form, onSubmit, onCancel, submitLabel, submitting }: VendorFormProps) {
+  return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
@@ -141,6 +89,97 @@ export default function Vendors() {
       </form>
     </Form>
   );
+}
+
+function buildVendorData(values: FormValues) {
+  return {
+    name: values.name,
+    ...(values.contactPerson ? { contactPerson: values.contactPerson } : {}),
+    ...(values.phone ? { phone: values.phone } : {}),
+    ...(values.email ? { email: values.email } : {}),
+    ...(values.address ? { address: values.address } : {}),
+  };
+}
+
+export default function Vendors() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [editItem, setEditItem] = useState<Vendor | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useListVendors({ search: search || undefined, page, limit: PAGE_SIZE });
+  const create = useCreateVendor();
+  const update = useUpdateVendor();
+  const toggle = useToggleVendorActive();
+
+  const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE));
+
+  const addForm = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", contactPerson: "", phone: "", email: "", address: "" },
+  });
+  const editForm = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", contactPerson: "", phone: "", email: "", address: "" },
+  });
+
+  function openEdit(v: Vendor) {
+    setEditItem(v);
+    editForm.reset({
+      name: v.name,
+      contactPerson: v.contactPerson ?? "",
+      phone: v.phone ?? "",
+      email: v.email ?? "",
+      address: v.address ?? "",
+    });
+  }
+
+  function handleAdd(values: FormValues) {
+    setSubmitting(true);
+    create.mutate({ data: buildVendorData(values) }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        toast({ title: "Vendor added" });
+        setAddOpen(false);
+        addForm.reset();
+        setSubmitting(false);
+      },
+      onError: (e) => {
+        toast({ title: "Error", description: e.message, variant: "destructive" });
+        setSubmitting(false);
+      },
+    });
+  }
+
+  function handleEdit(values: FormValues) {
+    if (!editItem) return;
+    setSubmitting(true);
+    update.mutate({ id: editItem.id, data: buildVendorData(values) }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        toast({ title: "Vendor updated" });
+        setEditItem(null);
+        setSubmitting(false);
+      },
+      onError: (e) => {
+        toast({ title: "Error", description: e.message, variant: "destructive" });
+        setSubmitting(false);
+      },
+    });
+  }
+
+  function handleToggle(id: number) {
+    toggle.mutate({ id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        toast({ title: "Status updated" });
+      },
+      onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    });
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -181,12 +220,12 @@ export default function Vendors() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.data.map(v => (
+                  {data.data.map((v: Vendor) => (
                     <tr key={v.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
                       data-testid={`row-vendor-${v.id}`}>
                       <td className="px-4 py-3 font-medium">{v.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{v.contactPerson || "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs font-mono">{v.phone || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{v.contactPerson ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs font-mono">{v.phone ?? "—"}</td>
                       <td className="px-4 py-3">
                         <Badge variant={v.isActive ? "default" : "outline"} data-testid={`status-vendor-${v.id}`}>
                           {v.isActive ? "Active" : "Inactive"}
@@ -225,14 +264,14 @@ export default function Vendors() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader><DialogTitle className="uppercase tracking-wide font-bold">Add Vendor</DialogTitle></DialogHeader>
-          <VendorForm form={addForm} onSubmit={handleAdd} onCancel={() => setAddOpen(false)} submitLabel="Add Vendor" />
+          <VendorForm form={addForm} onSubmit={handleAdd} onCancel={() => setAddOpen(false)} submitLabel="Add Vendor" submitting={submitting} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!editItem} onOpenChange={open => !open && setEditItem(null)}>
         <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader><DialogTitle className="uppercase tracking-wide font-bold">Edit Vendor</DialogTitle></DialogHeader>
-          <VendorForm form={editForm} onSubmit={handleEdit} onCancel={() => setEditItem(null)} submitLabel="Save Changes" />
+          <VendorForm form={editForm} onSubmit={handleEdit} onCancel={() => setEditItem(null)} submitLabel="Save Changes" submitting={submitting} />
         </DialogContent>
       </Dialog>
     </div>

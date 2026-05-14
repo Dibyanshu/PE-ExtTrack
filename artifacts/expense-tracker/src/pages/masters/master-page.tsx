@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface MasterItem {
   id: number;
@@ -34,7 +33,7 @@ const PAGE_SIZE = 20;
 export function MasterPage({
   title, items, total, isLoading,
   page, setPage, search, setSearch,
-  queryKey, onAdd, onEdit, onDelete,
+  onAdd, onEdit, onDelete,
 }: MasterPageProps) {
   const [addOpen, setAddOpen] = useState(false);
   const [editItem, setEditItem] = useState<MasterItem | null>(null);
@@ -53,8 +52,9 @@ export function MasterPage({
       toast({ title: "Added", description: `${title} item added.` });
       setAddOpen(false);
       setInputValue("");
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "An error occurred";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally { setSubmitting(false); }
   }
 
@@ -66,8 +66,9 @@ export function MasterPage({
       toast({ title: "Updated", description: `${title} item updated.` });
       setEditItem(null);
       setInputValue("");
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "An error occurred";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally { setSubmitting(false); }
   }
 
@@ -78,8 +79,9 @@ export function MasterPage({
       await onDelete(deleteItem.id);
       toast({ title: "Deleted", description: `${title} item deleted.` });
       setDeleteItem(null);
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "An error occurred";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally { setSubmitting(false); }
   }
 

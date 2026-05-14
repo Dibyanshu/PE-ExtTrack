@@ -1,11 +1,11 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 import NotFound from "@/pages/not-found";
-import { useEffect } from "react";
+import Forbidden from "@/pages/forbidden";
 import { AppLayout } from "./components/layout/app-layout";
 
 // Pages
@@ -14,6 +14,7 @@ import Dashboard from "./pages/dashboard";
 import VouchersList from "./pages/vouchers-list";
 import VoucherCreate from "./pages/voucher-create";
 import VoucherDetail from "./pages/voucher-detail";
+import VoucherEdit from "./pages/voucher-edit";
 import Particulars from "./pages/masters/particulars";
 import Uom from "./pages/masters/uom";
 import PaymentStatus from "./pages/masters/payment-status";
@@ -32,26 +33,24 @@ const queryClient = new QueryClient({
 
 setAuthTokenGetter(() => localStorage.getItem("pe_token"));
 
-function ProtectedRoute({ component: Component, roles, componentProps }: { component: any; roles?: string[]; componentProps?: Record<string, any> }) {
+interface GuardProps {
+  roles?: string[];
+  children: React.ReactNode;
+}
+
+function Guard({ roles, children }: GuardProps) {
   const { isAuthenticated, role } = useAuth();
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      if (location !== "/login") setLocation("/login");
-    } else if (roles && role && !roles.includes(role)) {
-      setLocation("/dashboard");
-    }
-  }, [isAuthenticated, role, roles, setLocation, location]);
+  if (!isAuthenticated) {
+    return location !== "/login" ? <Redirect to="/login" /> : null;
+  }
 
-  if (!isAuthenticated) return null;
-  if (roles && role && !roles.includes(role)) return null;
+  if (roles && role && !roles.includes(role)) {
+    return <Forbidden />;
+  }
 
-  return (
-    <AppLayout>
-      <Component {...(componentProps || {})} />
-    </AppLayout>
-  );
+  return <AppLayout>{children}</AppLayout>;
 }
 
 const ALL_ROLES = ["expense_entry", "accounts", "admin", "superadmin"];
@@ -62,51 +61,50 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
 
-      {/* Dashboard */}
-      <Route path="/dashboard">
-        {() => <ProtectedRoute component={Dashboard} />}
-      </Route>
       <Route path="/">
-        {() => <ProtectedRoute component={Dashboard} />}
+        {() => <Guard><Dashboard /></Guard>}
+      </Route>
+      <Route path="/dashboard">
+        {() => <Guard><Dashboard /></Guard>}
       </Route>
 
-      {/* Vouchers */}
       <Route path="/vouchers/payment/new">
-        {() => <ProtectedRoute component={VoucherCreate} roles={ALL_ROLES} componentProps={{ voucherType: "payment" }} />}
+        {() => <Guard roles={ALL_ROLES}><VoucherCreate voucherType="payment" /></Guard>}
       </Route>
       <Route path="/vouchers/receive/new">
-        {() => <ProtectedRoute component={VoucherCreate} roles={ALL_ROLES} componentProps={{ voucherType: "receive" }} />}
-      </Route>
-      <Route path="/vouchers/:id">
-        {() => <ProtectedRoute component={VoucherDetail} roles={ALL_ROLES} />}
+        {() => <Guard roles={ALL_ROLES}><VoucherCreate voucherType="receive" /></Guard>}
       </Route>
       <Route path="/vouchers/payment">
-        {() => <ProtectedRoute component={VouchersList} roles={ALL_ROLES} componentProps={{ voucherType: "payment" }} />}
+        {() => <Guard roles={ALL_ROLES}><VouchersList voucherType="payment" /></Guard>}
       </Route>
       <Route path="/vouchers/receive">
-        {() => <ProtectedRoute component={VouchersList} roles={ALL_ROLES} componentProps={{ voucherType: "receive" }} />}
+        {() => <Guard roles={ALL_ROLES}><VouchersList voucherType="receive" /></Guard>}
+      </Route>
+      <Route path="/vouchers/:id/edit">
+        {() => <Guard roles={ALL_ROLES}><VoucherEdit /></Guard>}
+      </Route>
+      <Route path="/vouchers/:id">
+        {() => <Guard roles={ALL_ROLES}><VoucherDetail /></Guard>}
       </Route>
 
-      {/* Masters */}
       <Route path="/masters/particulars">
-        {() => <ProtectedRoute component={Particulars} roles={ADMIN_ROLES} />}
+        {() => <Guard roles={ADMIN_ROLES}><Particulars /></Guard>}
       </Route>
       <Route path="/masters/uom">
-        {() => <ProtectedRoute component={Uom} roles={ADMIN_ROLES} />}
+        {() => <Guard roles={ADMIN_ROLES}><Uom /></Guard>}
       </Route>
       <Route path="/masters/payment-status">
-        {() => <ProtectedRoute component={PaymentStatus} roles={ADMIN_ROLES} />}
+        {() => <Guard roles={ADMIN_ROLES}><PaymentStatus /></Guard>}
       </Route>
       <Route path="/masters/projects">
-        {() => <ProtectedRoute component={Projects} roles={ADMIN_ROLES} />}
+        {() => <Guard roles={ADMIN_ROLES}><Projects /></Guard>}
       </Route>
       <Route path="/masters/vendors">
-        {() => <ProtectedRoute component={Vendors} roles={ADMIN_ROLES} />}
+        {() => <Guard roles={ADMIN_ROLES}><Vendors /></Guard>}
       </Route>
 
-      {/* Users */}
       <Route path="/users">
-        {() => <ProtectedRoute component={Users} roles={ADMIN_ROLES} />}
+        {() => <Guard roles={ADMIN_ROLES}><Users /></Guard>}
       </Route>
 
       <Route component={NotFound} />

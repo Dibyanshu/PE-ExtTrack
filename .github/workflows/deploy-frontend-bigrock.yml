@@ -56,7 +56,7 @@ jobs:
       - name: Build frontend
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL || vars.VITE_API_URL }}
-          VITE_BASE_PATH: /expense_tracker/
+          BASE_PATH: /expense_tracker/
         run: npm run --workspace @workspace/expense-tracker build
 
       - name: Deploy frontend to BigRock
@@ -67,8 +67,9 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
           port: ${{ secrets.FTP_PORT || 21 }}
-          local-dir: frontend/dist/
+          local-dir: frontend/dist/public/
           server-dir: ${{ secrets.FTP_FRONTEND_DIR || vars.FTP_FRONTEND_DIR || '/public_html/expense_tracker/' }}
+          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.git*/**

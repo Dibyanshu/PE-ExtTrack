@@ -33,7 +33,9 @@ let bootPromise: Promise<void> | null = null;
 let appHandler: ((req: unknown, res: unknown) => void) | null = null;
 
 interface ReqLike {
+  method?: string;
   url?: string;
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 interface ResLike {
@@ -52,6 +54,32 @@ function getPathname(urlValue: string | undefined): string {
 
 function isHealthPath(pathname: string): boolean {
   return pathname === "/healthz" || pathname === "/api/healthz";
+}
+
+function getRequestHeader(
+  req: ReqLike,
+  headerName: string,
+): string | undefined {
+  const header = req.headers?.[headerName] ?? req.headers?.[headerName.toLowerCase()];
+  if (Array.isArray(header)) {
+    return header[0];
+  }
+
+  return header;
+}
+
+function applyCorsHeaders(req: ReqLike, res: ResLike): void {
+  const origin = getRequestHeader(req, "origin");
+  const requestHeaders = getRequestHeader(req, "access-control-request-headers");
+
+  res.setHeader("access-control-allow-origin", origin ?? "*");
+  res.setHeader("access-control-allow-methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.setHeader(
+    "access-control-allow-headers",
+    requestHeaders ?? "Authorization, Content-Type",
+  );
+  res.setHeader("access-control-max-age", "86400");
+  res.setHeader("vary", "Origin, Access-Control-Request-Headers");
 }
 
 function writeJson(res: ResLike, statusCode: number, body: Record<string, unknown>): void {
@@ -75,6 +103,14 @@ async function boot(): Promise<void> {
 export default async function handler(req: unknown, res: unknown): Promise<void> {
   const request = req as ReqLike;
   const response = res as ResLike;
+
+  applyCorsHeaders(request, response);
+
+  if (request.method === "OPTIONS") {
+    response.statusCode = 204;
+    response.end();
+    return;
+  }
 
   const pathname = getPathname(request.url);
   if (isHealthPath(pathname)) {

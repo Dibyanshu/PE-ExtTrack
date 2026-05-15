@@ -38,9 +38,13 @@ export default function Dashboard() {
     );
   }
 
-  const paymentType = summary.byType.find(t => t.voucherType === "payment");
-  const receiveType = summary.byType.find(t => t.voucherType === "receive");
+  const byType = summary.byType ?? [];
   const byStatus: StatusSummary[] = summary.byStatus ?? [];
+  const recentVouchers = summary.recentVouchers ?? [];
+  const byProject = summary.byProject ?? [];
+
+  const paymentType = byType.find(t => t.voucherType === "payment");
+  const receiveType = byType.find(t => t.voucherType === "receive");
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -137,7 +141,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {summary.recentVouchers.map((v) => (
+              {recentVouchers.map((v) => (
                 <div key={v.expenseId} className="flex items-center justify-between p-3 rounded-md bg-muted/30 border border-border"
                   data-testid={`dash-recent-${v.expenseId}`}>
                   <div>
@@ -152,7 +156,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
-              {summary.recentVouchers.length === 0 && (
+              {recentVouchers.length === 0 && (
                 <div className="text-sm text-muted-foreground text-center py-8">No recent vouchers found.</div>
               )}
             </div>
@@ -165,7 +169,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {summary.byProject.map((p) => (
+              {byProject.map((p) => (
                 <div key={p.projectId} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0"
                   data-testid={`dash-project-${p.projectId}`}>
                   <div>
@@ -177,7 +181,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
-              {summary.byProject.length === 0 && (
+              {byProject.length === 0 && (
                 <div className="text-sm text-muted-foreground text-center py-8">No project data available.</div>
               )}
             </div>

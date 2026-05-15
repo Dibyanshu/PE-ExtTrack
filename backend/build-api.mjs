@@ -1,5 +1,6 @@
 /**
- * Builds the Vercel serverless entrypoint (api/index.ts) into a self-contained
+ * Builds the Vercel serverless entrypoint (src/api/index.ts) into a
+ * self-contained
  * ESM bundle at dist/api/index.js.  @vercel/node then runs it with bundle:false
  * so it does not attempt a second esbuild pass on the already-bundled output.
  *
@@ -21,7 +22,7 @@ await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 
 await esbuild({
-  entryPoints: [path.resolve(artifactDir, "api/index.ts")],
+  entryPoints: [path.resolve(artifactDir, "src/api/index.ts")],
   platform: "node",
   bundle: true,
   format: "esm",

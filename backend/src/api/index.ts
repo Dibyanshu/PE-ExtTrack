@@ -85,9 +85,8 @@ function writeJson(res: ResLike, statusCode: number, body: Record<string, unknow
   res.end(JSON.stringify(body));
 }
 
-// Static imports are required so @vercel/node's esbuild bundler includes them.
-import app from "../src/app";
-import { runStartupMigrations } from "../src/lib/startup-migrations";
+import app from "../app";
+import { runStartupMigrations } from "../lib/startup-migrations";
 
 async function boot(): Promise<void> {
   if (!bootPromise) {

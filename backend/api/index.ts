@@ -1,3 +1,6 @@
+import app from "../src/app";
+import { runStartupMigrations } from "../src/lib/startup-migrations";
+
 function ensureMysqlDatabaseUrl(): void {
   if (
     process.env.MYSQL_DATABASE_URL ||
@@ -61,12 +64,6 @@ async function boot(): Promise<void> {
   if (!bootPromise) {
     bootPromise = (async () => {
       ensureMysqlDatabaseUrl();
-
-      const [{ default: app }, { runStartupMigrations }] = await Promise.all([
-        import("../src/app"),
-        import("../src/lib/startup-migrations"),
-      ]);
-
       await runStartupMigrations();
       appHandler = app as unknown as (req: unknown, res: unknown) => void;
     })();

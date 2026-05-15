@@ -1,7 +1,6 @@
 {
   "version": 2,
-  "installCommand": "cd .. && npm ci",
-  "buildCommand": "node build-api.mjs",
+  "installCommand": "(cd .. && npm ci) && node build-api.mjs",
   "builds": [
     {
       "src": "dist/api/index.js",

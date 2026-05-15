@@ -13,6 +13,20 @@ import { writeAudit } from "../lib/audit";
 
 const router = Router();
 
+function isForeignKeyReferenceError(error: unknown): boolean {
+  const err = error as {
+    code?: string;
+    errno?: number;
+    cause?: { code?: string; errno?: number };
+  };
+
+  if (err.code === "ER_ROW_IS_REFERENCED_2" || err.errno === 1451) {
+    return true;
+  }
+
+  return err.cause?.code === "ER_ROW_IS_REFERENCED_2" || err.cause?.errno === 1451;
+}
+
 // ─── Particulars ──────────────────────────────────────────────────────────────
 
 router.get("/masters/particulars", requireAuth, async (req, res) => {
@@ -183,7 +197,17 @@ router.delete("/masters/projects/:id", requireRole("admin"), async (req, res) =>
   const id = Number(req.params.id);
   const [existing] = await db.select().from(projectMaster).where(eq(projectMaster.id, id)).limit(1);
   if (!existing) { res.status(404).json({ error: "Not found" }); return; }
-  await db.delete(projectMaster).where(eq(projectMaster.id, id));
+  try {
+    await db.delete(projectMaster).where(eq(projectMaster.id, id));
+  } catch (error) {
+    if (isForeignKeyReferenceError(error)) {
+      res.status(409).json({
+        error: "Cannot delete project because it is used by existing expenses",
+      });
+      return;
+    }
+    throw error;
+  }
   await writeAudit({ entityType: "project", entityId: id, action: "delete", oldValue: existing, userId: res.locals.user.id });
   res.json({ success: true });
 });

@@ -15,10 +15,10 @@ paths = [ "/" ]
 localPort = 25762
 
 [services.development]
-run = "pnpm --filter @workspace/expense-tracker run dev"
+run = "npm run --workspace @workspace/expense-tracker dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/expense-tracker", "run", "build" ]
+build = [ "npm", "run", "--workspace", "@workspace/expense-tracker", "build" ]
 publicDir = "frontend/dist/public"
 serve = "static"
 

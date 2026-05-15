@@ -4,11 +4,11 @@ Full-stack expense-tracking system for a copper-production company. Supports Pay
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/backend run dev` — build and start the API server
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate React Query hooks + Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push Drizzle schema changes to the MySQL database (dev only)
-- `pnpm --filter @workspace/db run seed` — seed master data and default users
-- `pnpm run typecheck` — full TypeScript check across all packages
+- `npm run --workspace @workspace/backend dev` — build and start the API server
+- `npm run --workspace @workspace/backend codegen` — regenerate React Query hooks + Zod schemas from OpenAPI spec
+- `npm run --workspace @workspace/backend db:push` — push Drizzle schema changes to the MySQL database (dev only)
+- `npm run --workspace @workspace/backend db:seed` — seed master data and default users
+- `npm run typecheck` — full TypeScript check across all packages
 
 ### Required environment variables
 
@@ -19,7 +19,7 @@ Full-stack expense-tracking system for a copper-production company. Supports Pay
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
+- npm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5, esbuild bundle
 - DB: MySQL 8 + Drizzle ORM (`mysql2` driver)
 - Auth: JWT (jsonwebtoken), bcryptjs, RBAC middleware
@@ -74,7 +74,7 @@ Full-stack expense-tracking system for a copper-production company. Supports Pay
 
 ## Gotchas
 
-- Run `pnpm --filter @workspace/api-spec run codegen` after any change to `openapi.yaml`
-- Run `pnpm --filter @workspace/db run push` after any schema change, before seeding
+- Run `npm run --workspace @workspace/backend codegen` after any change to `openapi.yaml`
+- Run `npm run --workspace @workspace/backend db:push` after any schema change, before seeding
 - The seed script uses `INSERT IGNORE` — safe to re-run
 - `JWT_SECRET` is required at startup — server throws immediately if not set

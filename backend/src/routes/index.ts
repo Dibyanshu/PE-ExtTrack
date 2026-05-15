@@ -9,6 +9,7 @@ import vouchersRouter from "./vouchers";
 import expensesRouter from "./expenses";
 import documentsRouter from "./documents";
 import dashboardRouter from "./dashboard";
+import { getUploadDir } from "../lib/uploads";
 
 const router = Router();
 
@@ -22,6 +23,6 @@ router.use(expensesRouter);
 router.use(documentsRouter);
 router.use(dashboardRouter);
 
-router.use("/uploads", serveStatic(path.resolve(process.cwd(), "uploads")));
+router.use("/uploads", serveStatic(getUploadDir()));
 
 export default router;

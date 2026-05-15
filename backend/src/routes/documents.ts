@@ -1,17 +1,16 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 import { randomUUID } from "crypto";
 import { db, documents, expenseVersions, expenses } from "../db";
 import { eq, and, count, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth";
+import { ensureUploadDirExists, getUploadDir } from "../lib/uploads";
 
-const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const UPLOAD_DIR = getUploadDir();
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+  destination: (_req, _file, cb) => cb(null, ensureUploadDirExists()),
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
     cb(null, `${randomUUID()}${ext}`);

@@ -9,12 +9,12 @@ import {
   getGetExpenseQueryKey,
   getGetExpenseHistoryQueryKey,
   getListExpensesQueryKey,
-} from "@workspace/api-client-react";
+} from "@/api-client";
 import type {
   ExpenseDetailResponseData,
   Document as VoucherDocument,
   UploadExpenseDocumentsBody,
-} from "@workspace/api-client-react";
+} from "@/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";

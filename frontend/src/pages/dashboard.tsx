@@ -1,5 +1,5 @@
-import { useGetDashboardSummary } from "@workspace/api-client-react";
-import type { StatusSummary } from "@workspace/api-client-react";
+import { useGetDashboardSummary } from "@/api-client";
+import type { StatusSummary } from "@/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, IndianRupee, FileText, ArrowUpRight, ArrowDownRight, CreditCard } from "lucide-react";

@@ -5,7 +5,7 @@ import {
   useUpdateUom,
   useDeleteUom,
   getListUomQueryKey,
-} from "@workspace/api-client-react";
+} from "@/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { MasterPage } from "./master-page";
 

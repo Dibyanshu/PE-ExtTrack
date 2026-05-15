@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useLocation } from "wouter";
-import { AuthUser, AuthUserRole } from "@workspace/api-client-react";
+import { AuthUser, AuthUserRole } from "@/api-client";
 
 interface AuthContextType {
   user: AuthUser | null;

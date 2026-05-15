@@ -6,8 +6,8 @@ import {
   useListParticulars,
   useListPaymentStatuses,
   getListExpensesQueryKey,
-} from "@workspace/api-client-react";
-import type { ListExpensesVoucherType } from "@workspace/api-client-react";
+} from "@/api-client";
+import type { ListExpensesVoucherType } from "@/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

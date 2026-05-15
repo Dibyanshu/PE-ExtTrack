@@ -8,7 +8,7 @@ import {
   useUpdateProject,
   useDeleteProject,
   getListProjectsQueryKey,
-} from "@workspace/api-client-react";
+} from "@/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";

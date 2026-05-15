@@ -13,8 +13,8 @@ import {
   useCreateReceiveVoucher,
   useUploadExpenseDocuments,
   getListExpensesQueryKey,
-} from "@workspace/api-client-react";
-import type { UploadExpenseDocumentsBody } from "@workspace/api-client-react";
+} from "@/api-client";
+import type { UploadExpenseDocumentsBody } from "@/api-client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

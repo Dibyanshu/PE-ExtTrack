@@ -8,8 +8,8 @@ import {
   useUpdateVendor,
   useToggleVendorActive,
   getListVendorsQueryKey,
-} from "@workspace/api-client-react";
-import type { Vendor } from "@workspace/api-client-react";
+} from "@/api-client";
+import type { Vendor } from "@/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";

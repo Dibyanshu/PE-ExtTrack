@@ -2,7 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wo
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@/api-client";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import Forbidden from "@/pages/forbidden";

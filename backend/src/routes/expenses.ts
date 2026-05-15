@@ -11,7 +11,7 @@ import {
   projectMaster,
   vendorMaster,
   documents,
-} from "@workspace/db";
+} from "../db";
 import { eq, and, gte, lte, like, desc, sql, isNull } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { writeAudit } from "../lib/audit";

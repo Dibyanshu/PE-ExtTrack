@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
-import { db, documents, expenseVersions, expenses } from "@workspace/db";
+import { db, documents, expenseVersions, expenses } from "../db";
 import { eq, and, count, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth";
 

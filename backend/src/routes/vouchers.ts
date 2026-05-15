@@ -9,7 +9,7 @@ import {
   paymentStatusMaster,
   projectMaster,
   vendorMaster,
-} from "@workspace/db";
+} from "../db";
 import { eq } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth";
 import { nextVoucherNumber } from "../lib/voucher";

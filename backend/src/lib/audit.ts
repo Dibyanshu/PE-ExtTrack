@@ -1,5 +1,5 @@
-import { db } from "@workspace/db";
-import { auditLogs } from "@workspace/db";
+import { db } from "../db";
+import { auditLogs } from "../db";
 
 export async function writeAudit(params: {
   entityType: string;

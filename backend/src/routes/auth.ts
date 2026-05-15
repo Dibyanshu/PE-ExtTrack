@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, users } from "@workspace/db";
+import { db, users } from "../db";
 import { eq } from "drizzle-orm";
 import { signToken, requireAuth, type AuthUser } from "../middlewares/auth";
 

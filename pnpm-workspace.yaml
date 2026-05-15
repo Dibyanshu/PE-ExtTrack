@@ -38,8 +38,6 @@ packages:
   - artifacts/*
   - backend
   - frontend
-  - lib/*
-  - lib/integrations/*
   - scripts
 
 catalog:

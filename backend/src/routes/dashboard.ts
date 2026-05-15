@@ -6,7 +6,7 @@ import {
   projectMaster,
   paymentStatusMaster,
   vendorMaster,
-} from "@workspace/db";
+} from "../db";
 import type { SQL } from "drizzle-orm";
 import { eq, and, gte, lte, sql, desc, isNull } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";

@@ -9,7 +9,7 @@ import {
   uomMaster,
   paymentStatusMaster,
   projectMaster,
-} from "@workspace/db";
+} from "../db";
 import { eq, and, gte, lte, like, sql, isNull } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { writeAudit } from "../lib/audit";

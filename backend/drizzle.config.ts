@@ -15,7 +15,7 @@ if (!dbUrl) {
 }
 
 export default defineConfig({
-  schema: "./src/schema/index.ts",
+  schema: "./src/db/schema/index.ts",
   dialect: "mysql2",
   dbCredentials: {
     url: dbUrl,

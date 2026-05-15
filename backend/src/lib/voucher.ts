@@ -1,4 +1,4 @@
-import { pool } from "@workspace/db";
+import { pool } from "../db";
 
 export type VoucherType = "payment" | "receive";
 

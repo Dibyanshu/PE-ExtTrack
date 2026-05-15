@@ -6,7 +6,7 @@ import {
   uomMaster,
   paymentStatusMaster,
   projectMaster,
-} from "@workspace/db";
+} from "../db";
 import { eq, like, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { writeAudit } from "../lib/audit";

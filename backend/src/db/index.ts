@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import * as schema from "./schema";
 
@@ -31,23 +31,36 @@ function getMysqlDatabaseUrl(): string | undefined {
   return `mysql://${user}:${password}@${DB_HOST}:${DB_PORT}/${database}`;
 }
 
-// Accept DATABASE_URL only when it is a MySQL connection string.
-// Replit also injects DATABASE_URL for its managed Postgres instance, so we
-// must not blindly consume it — we check for a mysql scheme first.
-const dbUrl = getMysqlDatabaseUrl();
+// Pool and db are initialized lazily on first use so that importing this
+// module at the top level (e.g. in a Vercel serverless function) does not
+// throw when env vars are not yet available at module-load time.
+let _pool: mysql.Pool | undefined;
+let _db: MySql2Database<typeof schema> | undefined;
 
-if (!dbUrl) {
-  throw new Error(
-    "A MySQL DATABASE_URL (or MYSQL_DATABASE_URL) must be set.",
-  );
+function ensureInitialized(): void {
+  if (_pool) return;
+  const url = getMysqlDatabaseUrl();
+  if (!url) {
+    throw new Error(
+      "A MySQL DATABASE_URL (or MYSQL_DATABASE_URL) must be set.",
+    );
+  }
+  _pool = mysql.createPool({ uri: url, waitForConnections: true, connectionLimit: 10 });
+  _db = drizzle(_pool, { schema, mode: "default" });
 }
 
-export const pool = mysql.createPool({
-  uri: dbUrl,
-  waitForConnections: true,
-  connectionLimit: 10,
-});
+function makeLazyProxy<T extends object>(getInstance: () => T): T {
+  return new Proxy({} as T, {
+    get(_target, prop) {
+      ensureInitialized();
+      const instance = getInstance();
+      const value = (instance as Record<string | symbol, unknown>)[prop];
+      return typeof value === "function" ? (value as Function).bind(instance) : value;
+    },
+  });
+}
 
-export const db = drizzle(pool, { schema, mode: "default" });
+export const pool: mysql.Pool = makeLazyProxy(() => _pool!);
+export const db: MySql2Database<typeof schema> = makeLazyProxy(() => _db!);
 
 export * from "./schema";

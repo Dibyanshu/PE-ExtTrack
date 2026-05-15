@@ -7,6 +7,9 @@ on:
       - main
     paths:
       - 'backend/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.npmrc'
       - '.github/workflows/deploy-backend-vercel.yml'
 
 concurrency:
@@ -27,6 +30,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Validate required secrets
         shell: bash

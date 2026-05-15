@@ -31,7 +31,8 @@ const queryClient = new QueryClient({
   },
 });
 
-setBaseUrl(import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000") : null);
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? null;
+setBaseUrl(configuredApiBaseUrl ?? (import.meta.env.DEV ? "http://localhost:4000" : null));
 setAuthTokenGetter(() => localStorage.getItem("pe_token"));
 
 const ALL_ROLES = ["expense_entry", "accounts", "admin", "superadmin"];

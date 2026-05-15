@@ -45,8 +45,20 @@ export default function Login() {
       { data: values },
       {
         onSuccess: (data) => {
-          login(data.token, data.user);
-          setLocation(getPostLoginPath(data.user.role));
+          const token = data?.token;
+          const user = data?.user;
+
+          if (!token || !user || !user.role) {
+            toast({
+              title: "Login Failed",
+              description: "Invalid login response from server. Check API URL configuration.",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          login(token, user);
+          setLocation(getPostLoginPath(user.role));
         },
         onError: (error) => {
           toast({

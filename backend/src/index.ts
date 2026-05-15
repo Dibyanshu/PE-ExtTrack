@@ -1,23 +1,10 @@
-import app from "./app";
 import { logger } from "./lib/logger";
-import { runStartupMigrations } from "./lib/startup-migrations";
+import { bootApp, getRequiredPort } from "./lib/server-bootstrap";
 
-const rawPort = process.env["PORT"];
+const port = getRequiredPort();
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-runStartupMigrations()
-  .then(() => {
+bootApp()
+  .then((app) => {
     app.listen(port, (err) => {
       if (err) {
         logger.error({ err }, "Error listening on port");

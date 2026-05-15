@@ -1,16 +1,18 @@
 {
   "version": 2,
   "installCommand": "cd .. && npm ci",
+  "buildCommand": "node build-api.mjs",
   "builds": [
     {
-      "src": "api/index.ts",
-      "use": "@vercel/node@5.3.24"
+      "src": "dist/api/index.js",
+      "use": "@vercel/node@5.3.24",
+      "config": { "bundle": false }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.ts"
+      "dest": "dist/api/index.js"
     }
   ],
   "env": {

@@ -1,0 +1,112 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch on new push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: E2E – ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+
+    # ── Environment variables ────────────────────────────────────────────────
+    env:
+      # Frontend dev server settings
+      BASE_URL: http://localhost:3000
+      PORT: 3000
+      # Backend API that the frontend proxies to
+      API_PROXY_TARGET: http://localhost:4000
+      # Test credentials – stored as GitHub Actions Secrets
+      E2E_USER_EMAIL:    ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      # Database connection (used by the backend)
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      # JWT secret
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Node setup ────────────────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ── 3. Install workspace dependencies ────────────────────────────────
+      - name: Install workspace dependencies
+        run: npm ci
+
+      # ── 4. Install Playwright browsers (cached) ──────────────────────────
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+        working-directory: e2e
+
+      - name: Install Playwright system dependencies only (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps ${{ matrix.browser }}
+        working-directory: e2e
+
+      # ── 5. Build frontend ────────────────────────────────────────────────
+      - name: Build frontend
+        run: npm run build --workspace=frontend
+
+      # ── 6. Start backend API server ──────────────────────────────────────
+      - name: Start backend server
+        run: |
+          npm run start --workspace=backend &
+          npx wait-on http://localhost:4000/api/health --timeout 30000
+        env:
+          NODE_ENV: test
+
+      # ── 7. Start frontend preview server ────────────────────────────────
+      - name: Start frontend preview server
+        run: |
+          npm run serve --workspace=frontend &
+          npx wait-on ${{ env.BASE_URL }} --timeout 30000
+
+      # ── 8. Run Playwright tests ──────────────────────────────────────────
+      - name: Run Playwright tests (${{ matrix.browser }})
+        run: npx playwright test --project=${{ matrix.browser }}
+        working-directory: e2e
+
+      # ── 9. Upload test artefacts ─────────────────────────────────────────
+      - name: Upload HTML report
+        if: always() # Upload even if tests fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: e2e/playwright-report/
+          retention-days: 30
+
+      - name: Upload test results (traces / screenshots / videos)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.browser }}
+          path: e2e/test-results/
+          retention-days: 14

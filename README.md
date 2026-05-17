@@ -72,9 +72,55 @@ Full-stack expense-tracking system for a copper-production company. Supports Pay
 - Voucher prefix: PECRU-PV (payment), PECRU-RV (receive)
 - Four RBAC roles: expense_entry, accounts, admin, superadmin
 
-## Gotchas
 
-- Run `npm run --workspace @workspace/backend codegen` after any change to `openapi.yaml`
-- Run `npm run --workspace @workspace/backend db:push` after any schema change, before seeding
-- The seed script uses `INSERT IGNORE` — safe to re-run
-- `JWT_SECRET` is required at startup — server throws immediately if not set
+## E2E: Installation
+```cmd
+# Install all workspace deps (includes e2e)
+npm ci
+
+# Install Playwright browsers + OS-level system deps
+cd e2e && npx playwright install --with-deps
+```
+[e2e workspace](./e2e)
+
+| File | Purpose |
+|---|---|
+| playwright.config.ts | Central config: HTML reports, per-failure screenshots & video, trace: "on" for all tests, Chromium + Firefox projects, global auth setup project |
+| auth.setup.ts | Runs once before any spec; logs in and saves storage state to e2e/.auth/user.json |
+| auth.spec.ts | Login page flows: branding, empty-form validation, wrong-creds error, successful login |
+| dashboard.spec.ts | Dashboard: KPI cards visible, nav to voucher lists, API-error alert (route interception) |
+| vouchers.spec.ts | Full voucher flows for both payment and receive: list render, number filter, create-form validation, happy-path create |
+| login.page.ts | POM – Login page |
+| dashboard.page.ts | POM – Dashboard |
+| vouchers-list.page.ts | POM – Voucher list (shared for payment/receive) |
+| voucher-create.page.ts | POM – Voucher create form |
+
+[playwright.yml](/.github/workflows/playwright.yml)
+
+Runs on every push / pull_request to main:
+
+ - Matrix over chromium and firefox
+ - Browsers cached by actions/cache
+ - Starts the backend and frontend preview server in CI, gates with wait-on
+ - Uploads the HTML report always, and traces/screenshots/videos on failure
+
+## Running tests
+```cmd
+# All tests (headless, from workspace root)
+npm run e2e
+
+# Interactive UI mode
+npm run e2e:ui
+
+# Open the last HTML report
+npm run e2e:report
+```
+
+Required secrets (GitHub → Settings → Secrets)
+
+| Secret | Description |
+|---|---|
+| `E2E_USER_EMAIL` | Login email for the test account |
+| `E2E_USER_PASSWORD` | Login password |
+| `CI_DATABASE_URL` | Database connection string for CI |
+| `CI_JWT_SECRET` | JWT secret matching the backend config |

@@ -4,13 +4,17 @@
   "license": "MIT",
   "workspaces": [
     "backend",
-    "frontend"
+     "frontend",
+     "e2e"
   ],
   "scripts": {
     "preinstall": "sh -c 'rm -f yarn.lock'",
     "build": "npm run typecheck && npm run -ws --if-present build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "npm run typecheck:libs && npm run -ws --if-present typecheck"
+     "typecheck": "npm run typecheck:libs && npm run -ws --if-present typecheck",
+     "e2e": "npm run test --workspace=e2e",
+     "e2e:ui": "npm run test:ui --workspace=e2e",
+     "e2e:report": "npm run report --workspace=e2e"
   },
   "private": true,
   "devDependencies": {

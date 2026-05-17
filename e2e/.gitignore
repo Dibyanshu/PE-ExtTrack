@@ -1,0 +1,6 @@
+# Saved browser storage state (contains auth tokens – never commit)
+.auth/
+
+# Test artefacts
+playwright-report/
+test-results/

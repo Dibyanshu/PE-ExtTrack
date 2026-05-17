@@ -14,10 +14,14 @@ import { requireAuth } from "../middlewares/auth";
 const router = Router();
 
 router.get("/dashboard/summary", requireAuth, async (req, res) => {
+  const user = res.locals.user as { role: string; projectId: number };
   const { from, to } = req.query as { from?: string; to?: string };
 
   // expenseDate is mode:"string" — compare with ISO date strings, not Date objects
   const dateConditions: SQL<unknown>[] = [isNull(expenses.deletedAt)];
+  if (user.role === "expense_entry") {
+    dateConditions.push(eq(expenses.projectId, Number(user.projectId)));
+  }
   if (from) dateConditions.push(gte(expenseVersions.expenseDate, from));
   if (to) dateConditions.push(lte(expenseVersions.expenseDate, to));
 

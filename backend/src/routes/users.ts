@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, users } from "../db";
+import { db, users, projectMaster } from "../db";
 import { eq } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth";
 import { writeAudit } from "../lib/audit";
@@ -14,6 +14,7 @@ router.get("/users", requireRole("admin"), async (_req, res) => {
       name: users.name,
       email: users.email,
       role: users.role,
+      projectId: users.projectId,
       canViewHistory: users.canViewHistory,
       isActive: users.isActive,
       createdAt: users.createdAt,
@@ -24,16 +25,28 @@ router.get("/users", requireRole("admin"), async (_req, res) => {
 });
 
 router.post("/users", requireRole("admin"), async (req, res) => {
-  const { name, email, password, role, canViewHistory } = req.body as {
+  const { name, email, password, role, projectId, canViewHistory } = req.body as {
     name: string;
     email: string;
     password: string;
     role: "expense_entry" | "accounts" | "admin" | "superadmin";
+    projectId: number;
     canViewHistory?: boolean;
   };
 
-  if (!name || !email || !password || !role) {
-    res.status(400).json({ error: "name, email, password and role are required" });
+  if (!name || !email || !password || !role || projectId == null) {
+    res.status(400).json({ error: "name, email, password, role and projectId are required" });
+    return;
+  }
+
+  const [project] = await db
+    .select({ id: projectMaster.id })
+    .from(projectMaster)
+    .where(eq(projectMaster.id, Number(projectId)))
+    .limit(1);
+
+  if (!project) {
+    res.status(400).json({ error: "Invalid projectId" });
     return;
   }
 
@@ -43,6 +56,7 @@ router.post("/users", requireRole("admin"), async (req, res) => {
     email: email.toLowerCase().trim(),
     passwordHash,
     role,
+    projectId: Number(projectId),
     canViewHistory: canViewHistory ? 1 : 0,
     isActive: 1,
   }).$returningId();
@@ -52,7 +66,7 @@ router.post("/users", requireRole("admin"), async (req, res) => {
     entityType: "user",
     entityId: newId,
     action: "create",
-    newValue: { name, email, role },
+    newValue: { name, email, role, projectId: Number(projectId) },
     userId: res.locals.user.id,
   });
   res.status(201).json({ id: newId });
@@ -63,18 +77,33 @@ router.put("/users/:id", requireRole("admin"), async (req, res) => {
   const [existing] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!existing) { res.status(404).json({ error: "User not found" }); return; }
 
-  const { name, email, role, canViewHistory, password } = req.body as {
+  const { name, email, role, projectId, canViewHistory, password } = req.body as {
     name?: string;
     email?: string;
     role?: "expense_entry" | "accounts" | "admin" | "superadmin";
+    projectId?: number;
     canViewHistory?: boolean;
     password?: string;
   };
+
+  if (projectId !== undefined) {
+    const [project] = await db
+      .select({ id: projectMaster.id })
+      .from(projectMaster)
+      .where(eq(projectMaster.id, Number(projectId)))
+      .limit(1);
+
+    if (!project) {
+      res.status(400).json({ error: "Invalid projectId" });
+      return;
+    }
+  }
 
   const updates: Partial<typeof users.$inferInsert> = {};
   if (name !== undefined) updates.name = name;
   if (email !== undefined) updates.email = email.toLowerCase().trim();
   if (role !== undefined) updates.role = role;
+  if (projectId !== undefined) updates.projectId = Number(projectId);
   if (canViewHistory !== undefined) updates.canViewHistory = canViewHistory ? 1 : 0;
   if (password) updates.passwordHash = await bcrypt.hash(password, 12);
 

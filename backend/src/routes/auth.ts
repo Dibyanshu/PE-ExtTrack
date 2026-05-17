@@ -35,6 +35,7 @@ router.post("/auth/login", async (req, res) => {
     email: user.email,
     name: user.name,
     role: user.role as AuthUser["role"],
+    projectId: user.projectId,
     canViewHistory: user.canViewHistory === 1,
   };
 

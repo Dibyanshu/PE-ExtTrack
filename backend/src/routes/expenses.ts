@@ -20,6 +20,7 @@ import { getVoucherDetail } from "./vouchers";
 const router = Router();
 
 router.get("/expenses", requireAuth, async (req, res) => {
+  const user = res.locals.user as { role: string; projectId: number };
   const {
     from, to, projectId, particularId, paymentStatusId,
     vendorId, voucherType, voucherNumber,
@@ -31,6 +32,9 @@ router.get("/expenses", requireAuth, async (req, res) => {
   const offset = (pageNum - 1) * limitNum;
 
   const conditions: SQL<unknown>[] = [isNull(expenses.deletedAt)];
+  if (user.role === "expense_entry") {
+    conditions.push(eq(expenses.projectId, Number(user.projectId)));
+  }
   if (from) conditions.push(gte(expenseVersions.expenseDate, from));
   if (to) conditions.push(lte(expenseVersions.expenseDate, to));
   if (projectId) conditions.push(eq(expenses.projectId, Number(projectId)));
@@ -88,15 +92,21 @@ router.get("/expenses", requireAuth, async (req, res) => {
 });
 
 router.get("/expenses/:id", requireAuth, async (req, res) => {
+  const user = res.locals.user as { role: string; projectId: number };
   const expenseId = Number(req.params.id);
 
   const [exp] = await db
-    .select({ deletedAt: expenses.deletedAt })
+    .select({ deletedAt: expenses.deletedAt, projectId: expenses.projectId })
     .from(expenses)
     .where(eq(expenses.id, expenseId))
     .limit(1);
   if (!exp || exp.deletedAt !== null) {
     res.status(404).json({ error: "Expense not found" });
+    return;
+  }
+
+  if (user.role === "expense_entry" && exp.projectId !== Number(user.projectId)) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
 
@@ -115,6 +125,7 @@ router.get("/expenses/:id", requireAuth, async (req, res) => {
 router.put("/expenses/:id", requireRole("expense_entry"), async (req, res) => {
   const expenseId = Number(req.params.id);
   const userId = res.locals.user.id;
+  const user = res.locals.user as { role: string; projectId: number };
 
   const [existing] = await db
     .select()
@@ -122,6 +133,11 @@ router.put("/expenses/:id", requireRole("expense_entry"), async (req, res) => {
     .where(and(eq(expenses.id, expenseId), isNull(expenses.deletedAt)))
     .limit(1);
   if (!existing) { res.status(404).json({ error: "Expense not found" }); return; }
+
+  if (user.role === "expense_entry" && existing.projectId !== Number(user.projectId)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
 
   if (existing.approvedAt !== null) {
     res.status(409).json({ error: "Cannot edit an already-approved expense" });
@@ -307,6 +323,10 @@ router.get("/expenses/:id/history", requireAuth, async (req, res) => {
     .where(and(eq(expenses.id, expenseId), isNull(expenses.deletedAt)))
     .limit(1);
   if (!exp) { res.status(404).json({ error: "Expense not found" }); return; }
+  if (user.role === "expense_entry" && exp.projectId !== Number(user.projectId)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
 
   const versions = await db
     .select({

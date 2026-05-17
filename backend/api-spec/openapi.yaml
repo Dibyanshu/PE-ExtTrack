@@ -1241,9 +1241,11 @@ components:
         role:
           type: string
           enum: [expense_entry, accounts, admin, superadmin]
+        projectId:
+          type: integer
         canViewHistory:
           type: boolean
-      required: [id, email, name, role, canViewHistory]
+      required: [id, email, name, role, projectId, canViewHistory]
 
     LoginRequest:
       type: object
@@ -1275,6 +1277,8 @@ components:
         role:
           type: string
           enum: [expense_entry, accounts, admin, superadmin]
+        projectId:
+          type: integer
         canViewHistory:
           type: integer
         isActive:
@@ -1282,7 +1286,7 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, name, email, role, canViewHistory, isActive]
+      required: [id, name, email, role, projectId, canViewHistory, isActive]
 
     CreateUserRequest:
       type: object
@@ -1296,9 +1300,11 @@ components:
         role:
           type: string
           enum: [expense_entry, accounts, admin, superadmin]
+        projectId:
+          type: integer
         canViewHistory:
           type: boolean
-      required: [name, email, password, role]
+      required: [name, email, password, role, projectId]
 
     UpdateUserRequest:
       type: object
@@ -1312,6 +1318,8 @@ components:
         role:
           type: string
           enum: [expense_entry, accounts, admin, superadmin]
+        projectId:
+          type: integer
         canViewHistory:
           type: boolean
 

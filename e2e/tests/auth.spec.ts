@@ -61,4 +61,5 @@ test.describe("Login page", () => {
     await loginPage.login(email, password);
     await loginPage.expectRedirectedToDashboard();
   });
+
 });

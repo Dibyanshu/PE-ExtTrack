@@ -1,7 +1,40 @@
 import { defineConfig, devices } from "@playwright/test";
+import { readdirSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-const htmlReportFolder = process.env.PW_HTML_REPORT_DIR
-  ?? `playwright-report/run-${new Date().toISOString().replace(/[.:]/g, "-")}`;
+const blobReportRoot = process.env.PW_BLOB_REPORT_ROOT
+  ?? join(tmpdir(), "pe-exttrack-playwright-blob-report");
+const blobReportFileName = process.env.PW_BLOB_REPORT_FILE
+  ?? `run-${new Date().toISOString().replace(/[.:]/g, "-")}.zip`;
+const maxBlobReportsToKeep = Number.parseInt(process.env.PW_BLOB_REPORT_MAX_RUNS ?? "10", 10);
+
+const pruneOldBlobReports = (reportsRoot: string, keepCount: number) => {
+  if (!Number.isFinite(keepCount) || keepCount < 1) {
+    return;
+  }
+
+  try {
+    const blobReports = readdirSync(reportsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".zip"))
+      .map((entry) => {
+        const fullPath = join(reportsRoot, entry.name);
+        return {
+          fullPath,
+          mtime: statSync(fullPath).mtimeMs,
+        };
+      })
+      .sort((a, b) => b.mtime - a.mtime);
+
+    for (const oldReport of blobReports.slice(keepCount)) {
+      rmSync(oldReport.fullPath, { force: true });
+    }
+  } catch {
+    // Best-effort cleanup only; do not fail test runs.
+  }
+};
+
+pruneOldBlobReports(blobReportRoot, maxBlobReportsToKeep);
 
 /**
  * Base URL is the running frontend dev server.
@@ -22,10 +55,10 @@ export default defineConfig({
   reporter: [
     ["list"],
     [
-      "html",
+      "blob",
       {
-        outputFolder: htmlReportFolder,
-        open: "never", // Never auto-open; let CI/developer decide
+        outputDir: blobReportRoot,
+        fileName: blobReportFileName,
       },
     ],
   ],
@@ -63,14 +96,6 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: ".auth/user.json",
-      },
-      dependencies: ["setup"],
-    },
-    {
-      name: "firefox",
-      use: {
-        ...devices["Desktop Firefox"],
         storageState: ".auth/user.json",
       },
       dependencies: ["setup"],

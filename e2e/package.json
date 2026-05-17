@@ -7,7 +7,7 @@
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
-    "report": "playwright show-report playwright-report"
+    "report": "node ./scripts/show-latest-report.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

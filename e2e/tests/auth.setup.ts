@@ -6,7 +6,7 @@ import path from "path";
  *
  * This setup project runs once before any browser project.
  * It performs a real login and saves the resulting localStorage/cookies
- * to `e2e/.auth/user.json`.  All subsequent test projects load that
+ * to `.auth/user.json`.  All subsequent test projects load that
  * storage state so they start already authenticated.
  *
  * Credentials are consumed from environment variables so that they are
@@ -19,8 +19,8 @@ import path from "path";
 const AUTH_FILE = path.join(__dirname, "../.auth/user.json");
 
 setup("authenticate", async ({ page }) => {
-  const email    = process.env.E2E_USER_EMAIL    ?? "admin@parbati.com";
-  const password = process.env.E2E_USER_PASSWORD ?? "changeme";
+  const email = process.env.E2E_USER_EMAIL ?? "admin@parbatienterprises.com";
+  const password = process.env.E2E_USER_PASSWORD ?? "Parbati@123";
 
   await page.goto("/");
 

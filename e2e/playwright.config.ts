@@ -1,10 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const htmlReportFolder = process.env.PW_HTML_REPORT_DIR
+  ?? `playwright-report/run-${new Date().toISOString().replace(/[.:]/g, "-")}`;
+
 /**
  * Base URL is the running frontend dev server.
  * Override via environment variable: BASE_URL=https://staging.example.com npx playwright test
  */
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
+const API_HEALTH_URL = process.env.API_HEALTH_URL ?? "http://localhost:4000/api/healthz";
 
 export default defineConfig({
   testDir: "./tests",
@@ -20,7 +24,7 @@ export default defineConfig({
     [
       "html",
       {
-        outputFolder: "playwright-report",
+        outputFolder: htmlReportFolder,
         open: "never", // Never auto-open; let CI/developer decide
       },
     ],
@@ -59,7 +63,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "e2e/.auth/user.json",
+        storageState: ".auth/user.json",
       },
       dependencies: ["setup"],
     },
@@ -67,7 +71,7 @@ export default defineConfig({
       name: "firefox",
       use: {
         ...devices["Desktop Firefox"],
-        storageState: "e2e/.auth/user.json",
+        storageState: ".auth/user.json",
       },
       dependencies: ["setup"],
     },
@@ -76,10 +80,20 @@ export default defineConfig({
   /* Start the Vite dev server automatically when running locally */
   webServer: process.env.CI
     ? undefined
-    : {
-        command: "npm run dev --workspace=frontend",
-        url: BASE_URL,
-        reuseExistingServer: true,
-        timeout: 60_000,
-      },
+    : [
+        {
+          command: "npm run dev",
+          cwd: "../backend",
+          url: API_HEALTH_URL,
+          reuseExistingServer: true,
+          timeout: 90_000,
+        },
+        {
+          command: "npm run dev",
+          cwd: "../frontend",
+          url: BASE_URL,
+          reuseExistingServer: true,
+          timeout: 60_000,
+        },
+      ],
 });

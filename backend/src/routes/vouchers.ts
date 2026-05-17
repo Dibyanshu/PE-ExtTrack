@@ -146,32 +146,44 @@ const REQUIRED_VOUCHER_FIELDS = [
 ] as const;
 
 router.post("/vouchers/payment", requireRole("expense_entry"), async (req, res) => {
+  const user = res.locals.user as { id: number; role: string; projectId: number };
   const body = req.body as Partial<CreateVoucherBody>;
   const missing = REQUIRED_VOUCHER_FIELDS.filter((k) => body[k] == null);
   if (missing.length) {
     res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` });
     return;
   }
-  const result = await createVoucher("payment", body as CreateVoucherBody, res.locals.user.id);
+  if (user.role === "expense_entry" && Number(body.projectId) !== Number(user.projectId)) {
+    res.status(403).json({ error: "Forbidden: project access denied" });
+    return;
+  }
+
+  const result = await createVoucher("payment", body as CreateVoucherBody, user.id);
   await writeAudit({
     entityType: "expense", entityId: result.expenseId,
-    action: "create_payment_voucher", newValue: req.body, userId: res.locals.user.id,
+    action: "create_payment_voucher", newValue: req.body, userId: user.id,
   });
   const detail = await getVoucherDetail(result.expenseId);
   res.status(201).json({ data: detail });
 });
 
 router.post("/vouchers/receive", requireRole("expense_entry"), async (req, res) => {
+  const user = res.locals.user as { id: number; role: string; projectId: number };
   const body = req.body as Partial<CreateVoucherBody>;
   const missing = REQUIRED_VOUCHER_FIELDS.filter((k) => body[k] == null);
   if (missing.length) {
     res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` });
     return;
   }
-  const result = await createVoucher("receive", body as CreateVoucherBody, res.locals.user.id);
+  if (user.role === "expense_entry" && Number(body.projectId) !== Number(user.projectId)) {
+    res.status(403).json({ error: "Forbidden: project access denied" });
+    return;
+  }
+
+  const result = await createVoucher("receive", body as CreateVoucherBody, user.id);
   await writeAudit({
     entityType: "expense", entityId: result.expenseId,
-    action: "create_receive_voucher", newValue: req.body, userId: res.locals.user.id,
+    action: "create_receive_voucher", newValue: req.body, userId: user.id,
   });
   const detail = await getVoucherDetail(result.expenseId);
   res.status(201).json({ data: detail });

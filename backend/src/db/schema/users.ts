@@ -9,6 +9,7 @@ import {
 import { sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { projectMaster } from "./masters";
 
 export const users = mysqlTable("users", {
   id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
@@ -18,6 +19,9 @@ export const users = mysqlTable("users", {
   role: mysqlEnum(["expense_entry", "accounts", "admin", "superadmin"])
     .notNull()
     .default("expense_entry"),
+  projectId: bigint("project_id", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => projectMaster.id),
   canViewHistory: tinyint("can_view_history").notNull().default(0),
   isActive: tinyint("is_active").notNull().default(1),
   createdAt: timestamp("created_at")

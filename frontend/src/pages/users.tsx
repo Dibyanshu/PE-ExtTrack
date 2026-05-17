@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   useListUsers,
+  useListProjects,
   useCreateUser,
   useUpdateUser,
   useToggleUserActive,
@@ -36,6 +37,7 @@ const createSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "At least 6 characters"),
   role: z.enum(ROLES),
+  projectId: z.string().min(1, "Project is required"),
   canViewHistory: z.boolean(),
 });
 
@@ -43,6 +45,7 @@ const editSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
   role: z.enum(ROLES),
+  projectId: z.string().min(1, "Project is required"),
   canViewHistory: z.boolean(),
 });
 
@@ -64,18 +67,19 @@ export default function Users() {
   const queryClient = useQueryClient();
 
   const { data: usersResp, isLoading } = useListUsers();
+  const { data: projectsResp } = useListProjects({ limit: 200 });
   const create = useCreateUser();
   const update = useUpdateUser();
   const toggle = useToggleUserActive();
 
   const addForm = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
-    defaultValues: { name: "", email: "", password: "", role: "expense_entry", canViewHistory: false },
+    defaultValues: { name: "", email: "", password: "", role: "expense_entry", projectId: "", canViewHistory: false },
   });
 
   const editForm = useForm<EditValues>({
     resolver: zodResolver(editSchema),
-    defaultValues: { name: "", email: "", role: "expense_entry", canViewHistory: false },
+    defaultValues: { name: "", email: "", role: "expense_entry", projectId: "", canViewHistory: false },
   });
 
   function openEdit(u: UserRecord) {
@@ -84,6 +88,7 @@ export default function Users() {
       name: u.name,
       email: u.email,
       role: u.role as AppRole,
+      projectId: String(u.projectId),
       canViewHistory: !!u.canViewHistory,
     });
   }
@@ -96,6 +101,7 @@ export default function Users() {
         email: values.email,
         password: values.password,
         role: values.role as CreateUserRequestRole,
+        projectId: Number(values.projectId),
         canViewHistory: values.canViewHistory,
       }
     }, {
@@ -122,6 +128,7 @@ export default function Users() {
         name: values.name,
         email: values.email,
         role: values.role as UpdateUserRequestRole,
+        projectId: Number(values.projectId),
         canViewHistory: values.canViewHistory,
       }
     }, {
@@ -149,6 +156,8 @@ export default function Users() {
   }
 
   const users: UserRecord[] = (usersResp as ListUsers200 | undefined)?.data ?? [];
+  const projects = projectsResp?.data ?? [];
+  const projectLookup = new Map(projects.map((p) => [p.id, `${p.code} - ${p.name}`]));
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -174,6 +183,7 @@ export default function Users() {
                   <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-bold">Name</th>
                   <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-bold">Email</th>
                   <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-bold">Role</th>
+                  <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-bold">Project</th>
                   <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-bold">History</th>
                   <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-bold">Active</th>
                   <th className="px-4 py-3"></th>
@@ -188,6 +198,9 @@ export default function Users() {
                       <Badge variant={roleBadgeVariant[u.role as AppRole] ?? "outline"} data-testid={`badge-role-${u.id}`}>
                         {u.role}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
+                      {projectLookup.get(u.projectId) ?? `Project #${u.projectId}`}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {u.canViewHistory ? <span className="text-primary font-semibold">Yes</span> : "No"}
@@ -247,6 +260,18 @@ export default function Users() {
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField control={addForm.control} name="projectId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs uppercase tracking-wider font-bold">Project</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger data-testid="select-user-project"><SelectValue placeholder="Select project" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {projects.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.code} - {p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <FormField control={addForm.control} name="canViewHistory" render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
                   <FormLabel className="text-xs uppercase tracking-wider font-bold">Can View History</FormLabel>
@@ -291,6 +316,18 @@ export default function Users() {
                     <FormControl><SelectTrigger data-testid="select-edit-role"><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       {ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={editForm.control} name="projectId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs uppercase tracking-wider font-bold">Project</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger data-testid="select-edit-project"><SelectValue placeholder="Select project" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {projects.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.code} - {p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <FormMessage />

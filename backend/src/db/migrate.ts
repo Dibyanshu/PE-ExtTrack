@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(180) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('expense_entry','accounts','admin','superadmin') NOT NULL DEFAULT 'expense_entry',
+  project_id BIGINT UNSIGNED NOT NULL,
   can_view_history TINYINT NOT NULL DEFAULT 0,
   is_active TINYINT NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -49,6 +50,10 @@ CREATE TABLE IF NOT EXISTS project_master (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
+
+ALTER TABLE users
+  ADD CONSTRAINT fk_users_project
+  FOREIGN KEY (project_id) REFERENCES project_master(id);
 
 CREATE TABLE IF NOT EXISTS vendor_master (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   name: string;
   role: Role;
+  projectId: number;
   canViewHistory: boolean;
 }
 

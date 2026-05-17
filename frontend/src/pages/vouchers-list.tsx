@@ -5,16 +5,22 @@ import {
   useListProjects,
   useListParticulars,
   useListPaymentStatuses,
+  useDeleteExpense,
   getListExpensesQueryKey,
 } from "@/api-client";
 import type { ListExpensesVoucherType } from "@/api-client";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, ChevronLeft, ChevronRight, Search, Eye, AlertCircle } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const PAGE_SIZE = 20;
@@ -31,6 +37,13 @@ export default function VouchersList({ voucherType }: VouchersListProps) {
   const [particularId, setParticularId] = useState<string>("");
   const [paymentStatusId, setPaymentStatusId] = useState<string>("");
   const [voucherNumber, setVoucherNumber] = useState("");
+  const [deleteItem, setDeleteItem] = useState<{ id: number; voucherNumber: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const { role } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const remove = useDeleteExpense();
 
   const params = {
     voucherType: voucherType as ListExpensesVoucherType,
@@ -54,10 +67,28 @@ export default function VouchersList({ voucherType }: VouchersListProps) {
   const createPath = voucherType === "payment" ? "/vouchers/payment/new" : "/vouchers/receive/new";
 
   const totalPages = expenses ? Math.ceil(expenses.total / PAGE_SIZE) : 1;
+  const canDelete = ["admin", "superadmin"].includes(role || "");
 
   function resetFilters() {
     setFrom(""); setTo(""); setProjectId(""); setParticularId("");
     setPaymentStatusId(""); setVoucherNumber(""); setPage(1);
+  }
+
+  function handleDelete() {
+    if (!deleteItem) return;
+    setDeleting(true);
+    remove.mutate({ id: deleteItem.id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey(params) });
+        toast({ title: "Deleted", description: `${deleteItem.voucherNumber} deleted successfully.` });
+        setDeleteItem(null);
+        setDeleting(false);
+      },
+      onError: (err) => {
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+        setDeleting(false);
+      },
+    });
   }
 
   if (expensesError) {
@@ -218,11 +249,24 @@ export default function VouchersList({ voucherType }: VouchersListProps) {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <Link href={`/vouchers/${row.expenseId}`}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`btn-view-${row.expenseId}`}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </Link>
+                          <div className="flex gap-1 justify-end">
+                            <Link href={`/vouchers/${row.expenseId}`}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`btn-view-${row.expenseId}`}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </Link>
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => setDeleteItem({ id: row.expenseId, voucherNumber: row.voucherNumber })}
+                                data-testid={`btn-delete-${row.expenseId}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -252,6 +296,29 @@ export default function VouchersList({ voucherType }: VouchersListProps) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!deleteItem} onOpenChange={open => !open && setDeleteItem(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="uppercase tracking-wide font-bold">Delete Voucher</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Delete <strong className="text-foreground">{deleteItem?.voucherNumber}</strong>? This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteItem(null)} data-testid="btn-cancel-delete">Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="font-bold uppercase tracking-wide"
+              data-testid="btn-confirm-delete"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

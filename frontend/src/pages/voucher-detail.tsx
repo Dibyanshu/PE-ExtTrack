@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import {
   useGetExpense,
   useGetExpenseHistory,
   useApproveExpense,
   useFinalizeExpense,
+  useDeleteExpense,
   useUploadExpenseDocuments,
   getGetExpenseQueryKey,
   getGetExpenseHistoryQueryKey,
@@ -23,16 +24,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertCircle, ArrowLeft, CheckCircle, Lock, History, Upload, FileText, Pencil, Printer } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function VoucherDetail() {
   const [, params] = useRoute("/vouchers/:id");
+  const [, setLocation] = useLocation();
   const id = Number(params?.id);
   const { role, canViewHistory } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { data: expenseResp, isLoading, isError } = useGetExpense(id, {
     query: { enabled: !!id, queryKey: getGetExpenseQueryKey(id) },
@@ -43,12 +49,14 @@ export default function VoucherDetail() {
 
   const approveMutation = useApproveExpense();
   const finalizeMutation = useFinalizeExpense();
+  const deleteMutation = useDeleteExpense();
   const uploadMutation = useUploadExpenseDocuments();
 
   const expense = expenseResp?.data as ExpenseDetailResponseData | undefined;
 
   const canApprove = ["accounts", "admin", "superadmin"].includes(role || "");
   const canFinalize = ["accounts", "admin", "superadmin"].includes(role || "");
+  const canDelete = ["admin", "superadmin"].includes(role || "");
 
   function handleApprove() {
     approveMutation.mutate({ id }, {
@@ -69,6 +77,25 @@ export default function VoucherDetail() {
         toast({ title: "Finalized", description: "Voucher finalized." });
       },
       onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    });
+  }
+
+  function handleDelete() {
+    if (!expense) return;
+    setDeleting(true);
+    deleteMutation.mutate({ id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetExpenseQueryKey(id) });
+        toast({ title: "Deleted", description: "Voucher deleted successfully." });
+        setDeleting(false);
+        setDeleteOpen(false);
+        setLocation(expense.voucherType === "payment" ? "/vouchers/payment" : "/vouchers/receive");
+      },
+      onError: (err) => {
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+        setDeleting(false);
+      },
     });
   }
 
@@ -138,6 +165,16 @@ export default function VoucherDetail() {
                 <Pencil className="w-4 h-4" /> Edit
               </Button>
             </Link>
+          )}
+          {canDelete && (
+            <Button
+              variant="outline"
+              className="gap-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground font-bold uppercase tracking-wide print:hidden"
+              onClick={() => setDeleteOpen(true)}
+              data-testid="btn-delete"
+            >
+              <Trash2 className="w-4 h-4" /> Delete
+            </Button>
           )}
           {canApprove && !expense.approvedAt && !expense.finalizedAt && (
             <Button variant="outline" className="gap-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-white font-bold uppercase tracking-wide"
@@ -320,6 +357,29 @@ export default function VoucherDetail() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={deleteOpen} onOpenChange={open => !open && setDeleteOpen(false)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="uppercase tracking-wide font-bold">Delete Voucher</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Delete <strong className="text-foreground">{expense.voucherNumber}</strong>? This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} data-testid="btn-cancel-delete">Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="font-bold uppercase tracking-wide"
+              data-testid="btn-confirm-delete"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
